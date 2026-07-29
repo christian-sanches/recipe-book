@@ -1,5 +1,6 @@
+import type { GetServerSideProps } from "next";
 import { Button, Card, Typography, Space } from "antd";
-import { GoogleOutlined, BookOutlined } from "@ant-design/icons";
+import { GoogleOutlined, BookOutlined, UserOutlined } from "@ant-design/icons";
 import { signIn, useSession } from "next-auth/react";
 import { useRouter } from "next/router";
 import Head from "next/head";
@@ -7,7 +8,19 @@ import { useEffect } from "react";
 
 const { Title, Text } = Typography;
 
-export default function Login() {
+interface LoginProps {
+  devMode: boolean;
+}
+
+export const getServerSideProps: GetServerSideProps<LoginProps> = async () => {
+  return {
+    props: {
+      devMode: process.env.DEV_MODE === "true",
+    },
+  };
+};
+
+export default function Login({ devMode }: LoginProps) {
   const { data: session } = useSession();
   const router = useRouter();
 
@@ -38,18 +51,31 @@ export default function Login() {
             <Title level={3} style={{ margin: 0 }}>
               Recipe Book
             </Title>
-            <Text type="secondary">
-              Sign in to manage your recipes
-            </Text>
-            <Button
-              type="primary"
-              size="large"
-              icon={<GoogleOutlined />}
-              block
-              onClick={() => signIn("google", { callbackUrl: "/" })}
-            >
-              Sign in with Google
-            </Button>
+            <Text type="secondary">Sign in to manage your recipes</Text>
+
+            {devMode ? (
+              <Button
+                type="primary"
+                size="large"
+                icon={<UserOutlined />}
+                block
+                onClick={() =>
+                  signIn("credentials", { callbackUrl: "/", redirect: true })
+                }
+              >
+                Dev Login (Admin)
+              </Button>
+            ) : (
+              <Button
+                type="primary"
+                size="large"
+                icon={<GoogleOutlined />}
+                block
+                onClick={() => signIn("google", { callbackUrl: "/" })}
+              >
+                Sign in with Google
+              </Button>
+            )}
           </Space>
         </Card>
       </div>

@@ -4,6 +4,7 @@ RUN apk add --no-cache libc6-compat openssl
 WORKDIR /app
 
 COPY package.json package-lock.json* ./
+COPY prisma ./prisma
 RUN npm ci && npm cache clean --force
 
 # Stage 2: Build
@@ -55,4 +56,4 @@ EXPOSE 3000
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
 
-CMD ["node", "server.js"]
+CMD ["sh", "-c", "npm install --no-save prisma@6.6.0 2>&1 | tail -3 && npx prisma db push && node server.js"]
