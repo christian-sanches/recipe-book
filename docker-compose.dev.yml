@@ -7,5 +7,6 @@ services:
     environment:
       DEV_MODE: "true"
       NEXTAUTH_URL: "http://192.168.68.150:3000"
+      AUTH_TRUST_HOST: "true"
     ports:
       - "3000:3000"

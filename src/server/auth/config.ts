@@ -62,13 +62,26 @@ if (process.env.DEV_MODE === "true") {
 export const authConfig = {
   providers,
   adapter: PrismaAdapter(db),
+  pages: {
+    signIn: "/login",
+  },
+  session: {
+    strategy: "jwt",
+  },
   callbacks: {
-    session: ({ session, user }) => ({
+    jwt: ({ token, user }) => {
+      if (user) {
+        token.role = user.role;
+        token.id = user.id;
+      }
+      return token;
+    },
+    session: ({ session, token }) => ({
       ...session,
       user: {
         ...session.user,
-        id: user.id,
-        role: user.role ?? "VIEWER",
+        id: token.sub as string,
+        role: (token.role as string) ?? "VIEWER",
       },
     }),
     signIn: async ({ user }) => {

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Layout as AntLayout, Button, Space, Avatar, Dropdown, Typography, Menu } from "antd";
 import { UserOutlined, LoginOutlined, PlusOutlined, LogoutOutlined, BookOutlined } from "@ant-design/icons";
-import { useSession, signIn, signOut } from "next-auth/react";
+import { useSession, signOut } from "next-auth/react";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import type { MenuProps } from "antd";
@@ -76,7 +76,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           ) : (
             <Button
               icon={<LoginOutlined />}
-              onClick={() => signIn("google")}
+              onClick={() => router.push("/login")}
             >
               Sign in
             </Button>
