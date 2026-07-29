@@ -67,10 +67,34 @@ export const authConfig = {
     strategy: "jwt",
   },
   callbacks: {
-    jwt: ({ token, user }) => {
+    jwt: async ({ token, user, trigger }) => {
       if (user) {
         token.role = user.role;
         token.id = user.id;
+      }
+      // Re-check admin role on signIn or update — ensures admin users
+      // created via Google OAuth (which defaults to VIEWER) get upgraded
+      if ((trigger === "signIn" || trigger === "update") && token.email) {
+        const adminEmails = (process.env.ADMIN_EMAILS ?? "")
+          .split(",")
+          .map((e) => e.trim().toLowerCase())
+          .filter(Boolean);
+        if (adminEmails.includes((token.email as string).toLowerCase())) {
+          try {
+            const userFromDb = await db.user.findUnique({
+              where: { email: token.email as string },
+            });
+            if (userFromDb && userFromDb.role !== "ADMIN") {
+              await db.user.update({
+                where: { id: userFromDb.id },
+                data: { role: "ADMIN" },
+              });
+              token.role = "ADMIN";
+            }
+          } catch {
+            // ignore
+          }
+        }
       }
       return token;
     },

@@ -26,24 +26,20 @@ services:
       AUTH_GOOGLE_ID: ${AUTH_GOOGLE_ID:-}
       AUTH_GOOGLE_SECRET: ${AUTH_GOOGLE_SECRET:-}
       ADMIN_EMAILS: ${ADMIN_EMAILS:-}
+      AUTH_TRUST_HOST: "true"
     depends_on:
       postgres:
         condition: service_healthy
 
-  caddy:
-    image: caddy:2-alpine
+  cloudflared:
+    image: cloudflare/cloudflared:latest
     restart: unless-stopped
-    ports:
-      - "80:80"
-      - "443:443"
+    command: tunnel --config /etc/cloudflared/config.yml run
     volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile:ro
-      - caddy_data:/data
-      - caddy_config:/config
+      - /tmp/cloudflared:/etc/cloudflared:ro
+    network_mode: "host"
     depends_on:
       - app
 
 volumes:
   pgdata:
-  caddy_data:
-  caddy_config:
