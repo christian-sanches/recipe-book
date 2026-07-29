@@ -1,0 +1,37 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif,
+    "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+}
+
+.cooklang-steps p {
+  margin-bottom: 12px;
+  padding: 8px 12px;
+  background: #fafafa;
+  border-radius: 6px;
+  line-height: 1.8;
+}
+
+.cooklang-steps .ingredient {
+  color: #52c41a;
+  font-weight: 500;
+}
+
+.cooklang-steps .cookware {
+  display: inline-block;
+  background: #e6f4ff;
+  color: #1677ff;
+  padding: 0 6px;
+  border-radius: 4px;
+  font-size: 0.85em;
+}
+
+.cooklang-steps .timer {
+  display: inline-block;
+  background: #fff7e6;
+  color: #d46b08;
+  padding: 0 6px;
+  border-radius: 4px;
+  font-size: 0.85em;
+}

@@ -12,59 +12,28 @@ A self-hosted web application for managing cooking recipes using the [Cooklang](
 
 | Layer | Technology |
 |-------|-----------|
-| **Framework** | Next.js 14+ (App Router) |
+| **Framework** | Next.js 16 (App Router) |
+| **Runtime** | React 19 |
 | **API Layer** | tRPC v11 — end-to-end type safety |
-| **ORM** | Prisma |
+| **ORM** | Prisma 6 |
 | **Database** | PostgreSQL 16 (Docker container) |
-| **Authentication** | Auth.js v5 (NextAuth) — Google OAuth |
-| **UI Library** | Ant Design 5 |
-| **Recipe Parser** | `@cooklang/cooklang` (official WASM build) |
+| **Authentication** | Auth.js v5 (NextAuth) — Google OAuth with Prisma adapter |
+| **UI Library** | Ant Design 6 |
+| **Validation** | Zod 4 |
+| **Recipe Parser** | `@cooklang/cooklang` v0.18 (official WASM build) |
+| **Dev Server** | Next.js Turbopack (`next dev --turbo`) |
 | **Deployment** | Docker Compose (self-hosted on Hermes VM) |
 | **Reverse Proxy** | Caddy (auto SSL via Let's Encrypt) |
+| **Testing** | Jest + @swc/jest |
 
 ---
 
 ## Data Model
 
 ```prisma
-model User {
-  id        String   @id @default(cuid())
-  name      String?
-  email     String?  @unique
-  image     String?
-  role      Role     @default(VIEWER)
-  recipes   Recipe[]
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-}
-
 enum Role {
   ADMIN
   VIEWER
-}
-
-model Recipe {
-  id              String   @id @default(cuid())
-  title           String
-  slug            String   @unique
-  cooklangContent String   @map("cooklang_content") // raw .cook source
-  description     String?
-  servings        Int?
-  prepTime        Int?     @map("prep_time") // minutes
-  cookTime        Int?     @map("cook_time") // minutes
-  totalTime       Int?     @map("total_time") // minutes
-  source          String?  // URL or book reference
-  image           String?  // image URL
-  visibility      Visibility @default(PUBLIC)
-  authorId        String   @map("author_id")
-  author          User     @relation(fields: [authorId], references: [id])
-  tags            Tag[]
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-
-  @@index([authorId])
-  @@index([slug])
-  @@index([title])
 }
 
 enum Visibility {
@@ -72,10 +41,83 @@ enum Visibility {
   HIDDEN
 }
 
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String?   @unique
+  emailVerified DateTime?
+  image         String?
+  role          Role      @default(VIEWER)
+  recipes       Recipe[]
+  accounts      Account[]
+  sessions      Session[]
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  refresh_token_expires_in Int?
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+model Recipe {
+  id              String     @id @default(cuid())
+  title           String
+  slug            String     @unique
+  cooklangContent String     @map("cooklang_content")
+  description     String?
+  servings        Int?
+  prepTime        Int?       @map("prep_time")
+  cookTime        Int?       @map("cook_time")
+  totalTime       Int?       @map("total_time")
+  source          String?
+  image           String?
+  visibility      Visibility @default(PUBLIC)
+  authorId        String     @map("author_id")
+  author          User       @relation(fields: [authorId], references: [id])
+  tags            RecipeTag[]
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+
+  @@index([authorId])
+  @@index([slug])
+  @@index([title])
+}
+
 model Tag {
-  id      String          @id @default(cuid())
+  id      String      @id @default(cuid())
   name    String
-  slug    String          @unique
+  slug    String      @unique
   recipes RecipeTag[]
 
   @@index([slug])
@@ -95,9 +137,9 @@ model RecipeTag {
 
 1. User writes/edits a recipe in Cooklang syntax inside the web editor
 2. The raw `.cook` content is stored in PostgreSQL as the source of truth
-3. On the client side, `@cooklang/cooklang` (WASM) parses the content for live preview
-4. On the server side, the parser extracts ingredients, cookware, timers, and metadata for indexing and search
-5. Recipes can be exported as standalone `.cook` files
+3. On the client side, `@cooklang/cooklang` parses the content for live preview and HTML rendering
+4. On the server side, the raw content is stored for retrieval; parsing/rendering happens client-side
+5. Recipes can be exported as standalone `.cook` content via tRPC
 
 ---
 
@@ -115,7 +157,7 @@ model RecipeTag {
 
 ## Cooklang Features
 
-Using `@cooklang/cooklang` (WASM) with **all extensions enabled**:
+Using `@cooklang/cooklang` with **all extensions enabled**:
 
 | Feature | Syntax |
 |---------|--------|
@@ -127,7 +169,7 @@ Using `@cooklang/cooklang` (WASM) with **all extensions enabled**:
 | **Hidden ingredients** | `@-salt` |
 | **Optional ingredients** | `@?thyme` |
 | **Force new ingredient** | `@+flour` |
-| **Component aliases** | `@white wine|wine{}` |
+| **Component aliases** | `@white wine\|wine{}` |
 | **Intermediate preparations** | `@&(~1)dough{}` |
 | **Range values** | `@eggs{2-4}` |
 | **Temperature detection** | `180 ºC` |
@@ -142,22 +184,23 @@ Using `@cooklang/cooklang` (WASM) with **all extensions enabled**:
 ```
 recipe-book/
 ├── .github/
-│   └── workflows/
-│       └── ci.yml              # CI pipeline
+│   ├── workflows/
+│   │   └── ci.yml              # CI pipeline (test, lint, typecheck, build)
+│   └── CODEOWNERS
 ├── prisma/
 │   └── schema.prisma            # Database schema
 ├── src/
 │   ├── app/
 │   │   ├── layout.tsx           # Root layout (Ant Design provider)
-│   │   ├── page.tsx             # Home — recipe grid
+│   │   ├── page.tsx             # Home — recipe grid with search
+│   │   ├── providers.tsx        # Session & tRPC providers
 │   │   ├── recipes/
-│   │   │   ├── page.tsx         # Recipe list with search
-│   │   │   ├── new/
-│   │   │   │   └── page.tsx     # Create recipe
 │   │   │   ├── [slug]/
 │   │   │   │   └── page.tsx     # Recipe detail (parsed view)
 │   │   │   └── [slug]/edit/
 │   │   │       └── page.tsx     # Edit recipe
+│   │   ├── recipes/new/
+│   │   │   └── page.tsx         # Create recipe
 │   │   ├── api/
 │   │   │   ├── auth/
 │   │   │   │   └── [...nextauth]/
@@ -168,35 +211,51 @@ recipe-book/
 │   │   └── login/
 │   │       └── page.tsx         # Login page
 │   ├── components/
+│   │   ├── CooklangEditor.tsx   # Cooklang code editor
+│   │   ├── Layout.tsx           # App shell (navbar, auth buttons)
 │   │   ├── RecipeCard.tsx       # Recipe card for grid
 │   │   ├── RecipeForm.tsx       # Create/edit recipe form
-│   │   ├── CooklangEditor.tsx   # Code editor with live preview
-│   │   ├── RecipeViewer.tsx     # Parsed recipe display
-│   │   ├── SearchBar.tsx        # Full-text search
-│   │   ├── TagSelector.tsx      # Tag picker
-│   │   └── Layout.tsx           # App shell (navbar, auth)
+│   │   ├── RecipeViewer.tsx     # Parsed recipe display (official Cooklang renderer)
+│   │   ├── SearchBar.tsx        # Text search with tag filters
+│   │   └── TagSelector.tsx      # Tag picker
+│   ├── lib/
+│   │   └── utils.ts             # Shared utilities (slugify, etc.)
+│   ├── models/
+│   │   ├── recipe.ts            # Zod schemas for recipe CRUD
+│   │   └── tag.ts               # Zod schemas for tags
 │   ├── server/
-│   │   ├── api/
-│   │   │   └── routers/
-│   │   │       ├── recipe.ts    # Recipe CRUD routes
-│   │   │       └── tag.ts       # Tag routes
-│   │   ├── db.ts                # Prisma client
-│   │   └── auth.ts              # Auth.js config
+│   │   ├── auth/
+│   │   │   ├── config.ts        # Auth.js configuration
+│   │   │   └── index.ts         # Auth.js helpers
+│   │   └── db.ts                # Prisma client singleton
+│   ├── styles/
+│   │   └── globals.css          # Global styles + Cooklang step styles
 │   ├── trpc/
-│   │   ├── server.ts            # tRPC context & router
-│   │   └── client.ts            # tRPC client helpers
-│   └── lib/
-│       ├── cooklang.ts          # WASM parser wrapper
-│       └── utils.ts             # Shared utilities
+│   │   ├── init.ts              # tRPC context & procedure builders
+│   │   ├── react.tsx            # tRPC React provider
+│   │   ├── root.ts              # App router (recipe + tag)
+│   │   └── routers/
+│   │       ├── recipe.ts        # Recipe CRUD routes
+│   │       └── tag.ts           # Tag routes
+│   ├── __tests__/
+│   │   ├── utils.test.ts        # Tests for slugify/generateSlug
+│   │   └── models.test.ts       # Tests for Zod schemas
+│   └── env.ts                   # Environment validation (Zod)
 ├── public/
-│   └── images/                  # Uploaded recipe images
 ├── docker-compose.yml           # PostgreSQL + app
+├── docker-compose.dev.yml       # Dev overrides
 ├── Dockerfile                   # Multi-stage Next.js build
+├── docker-entrypoint.sh         # Container entrypoint
 ├── Caddyfile                    # Reverse proxy with auto SSL
+├── jest.config.ts               # Jest configuration
 ├── next.config.ts
 ├── package.json
 ├── tsconfig.json
 ├── .env.example
+├── .env
+├── .dockerignore
+├── .gitignore
+├── README.md
 └── SPEC.md                      # This document
 ```
 
@@ -206,11 +265,10 @@ recipe-book/
 
 | Route | Auth | Description |
 |-------|------|-------------|
-| `/` | Public | Home page — featured/grid of recipes |
-| `/recipes` | Public | Full recipe list with search & tag filters |
+| `/` | Public | Home page — recipe grid with search & tag filters |
 | `/recipes/[slug]` | Public | Single recipe detail (parsed & formatted) |
-| `/recipes/new` | Admin | Create a new recipe |
 | `/recipes/[slug]/edit` | Admin | Edit existing recipe |
+| `/recipes/new` | Admin | Create a new recipe |
 | `/login` | Public | Google OAuth login page |
 | `/api/auth/*` | — | Auth.js API routes |
 | `/api/trpc/*` | — | tRPC API routes |
@@ -221,17 +279,21 @@ recipe-book/
 
 ### Recipe Router
 
-- `recipe.list(filters?)` → `Recipe[]` — list/search recipes
-- `recipe.bySlug(slug)` → `Recipe` — get single recipe
-- `recipe.create(input)` → `Recipe` — create recipe (admin only)
-- `recipe.update(id, input)` → `Recipe` — update recipe (admin only)
-- `recipe.delete(id)` → `void` — delete recipe (admin only)
-- `recipe.export(id)` → `string` — export as .cook file
+| Procedure | Auth | Input | Output | Description |
+|-----------|------|-------|--------|-------------|
+| `recipe.list` | Public | `{ query?, tagSlugs?, visibility?, limit?, offset? }` | `{ items: Recipe[], total: number }` | List/search recipes with tag filter, visibility-aware |
+| `recipe.bySlug` | Public | `{ slug: string }` | `Recipe` | Get single recipe (404 if hidden + unauthenticated) |
+| `recipe.create` | Admin | `createRecipeSchema` | `Recipe` | Create new recipe with auto-generated slug |
+| `recipe.update` | Admin | `updateRecipeSchema` | `Recipe` | Update recipe, reconnect tags |
+| `recipe.delete` | Admin | `{ id: string }` | `{ success: true }` | Delete recipe |
+| `recipe.export` | Public | `{ slug: string }` | `string` | Export raw Cooklang content |
 
 ### Tag Router
 
-- `tag.list()` → `Tag[]` — all tags
-- `tag.create(name)` → `Tag` — create tag
+| Procedure | Auth | Input | Output | Description |
+|-----------|------|-------|--------|-------------|
+| `tag.list` | Public | — | `Tag[]` | All tags with recipe counts |
+| `tag.create` | Admin | `{ name: string }` | `Tag` | Create tag (dedup by slug) |
 
 ---
 
@@ -240,7 +302,7 @@ recipe-book/
 - Full-text search over recipe titles, descriptions, and Cooklang content
 - Filter by tags
 - Filter by visibility (admin sees hidden, public only sees public)
-- Uses PostgreSQL full-text search (`tsvector`/`tsquery`) or simple `ILIKE` for MVP
+- Uses PostgreSQL `ILIKE` for MVP
 
 ---
 
@@ -291,6 +353,19 @@ volumes:
 ### DNS
 
 A record for `recipes.fleflis.dev` points to this VM's IP address. Caddy handles automatic SSL certificate provisioning via Let's Encrypt.
+
+---
+
+## CI Pipeline
+
+On every PR to `main`, GitHub Actions runs:
+
+| Step | Command | Description |
+|------|---------|-------------|
+| **Test** | `npm test` | Unit tests (Jest) |
+| **Typecheck** | `npm run typecheck` | TypeScript type checking |
+| **Lint** | `npm run lint` | ESLint |
+| **Build** | `npm run build` | Next.js production build |
 
 ---
 

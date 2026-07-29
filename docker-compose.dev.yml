@@ -1,0 +1,12 @@
+# Dev override — skip Caddy (no SSL needed locally) and force dev mode
+services:
+  caddy:
+    profiles: ["disabled"]
+
+  app:
+    environment:
+      DEV_MODE: "true"
+      NEXTAUTH_URL: "http://localhost:3000"
+      AUTH_TRUST_HOST: "true"
+    ports:
+      - "3000:3000"
