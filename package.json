@@ -20,6 +20,7 @@
     "@ant-design/icons": "^6.3.2",
     "@auth/prisma-adapter": "^2.11.3",
     "@cooklang/cooklang": "^0.18.7",
+    "@modelcontextprotocol/sdk": "^1.30.0",
     "@prisma/client": "^6.6.0",
     "@tanstack/react-query": "^5.101.4",
     "@trpc/client": "^11.18.0",
