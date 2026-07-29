@@ -12,8 +12,8 @@ import {
   message,
 } from "antd";
 import { SaveOutlined, EyeOutlined } from "@ant-design/icons";
-import { useRouter } from "next/router";
-import { api } from "~/utils/api";
+import { useRouter } from "next/navigation";
+import { api } from "~/trpc/react";
 import RecipeViewer from "./RecipeViewer";
 
 const { Title } = Typography;
@@ -71,6 +71,7 @@ export default function RecipeForm({ initialData, isEditing }: RecipeFormProps) 
     const payload = {
       ...values,
       cooklangContent,
+      visibility: values.visibility ? "PUBLIC" : "HIDDEN",
     };
     if (isEditing && initialData) {
       updateRecipe.mutate({ id: initialData.id, ...payload } as any);
@@ -183,7 +184,7 @@ export default function RecipeForm({ initialData, isEditing }: RecipeFormProps) 
             />
           </Form.Item>
 
-          <Form.Item name="visibility" label="Public" valuePropName="checked">
+          <Form.Item name="visibility" label="Public" valuePropName="checked" >
             <Switch checkedChildren="Public" unCheckedChildren="Hidden" />
           </Form.Item>
 

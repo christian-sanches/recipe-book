@@ -1,5 +1,7 @@
+"use client";
+
 import { useSession } from "next-auth/react";
-import { useRouter } from "next/router";
+import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import Head from "next/head";
 import Layout from "~/components/Layout";

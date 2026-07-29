@@ -1,4 +1,6 @@
-import { useRouter } from "next/router";
+"use client";
+
+import { use, useCallback } from "react";
 import Head from "next/head";
 import { Button, Spin, Typography, Space, Tag, message, Modal } from "antd";
 import {
@@ -9,32 +11,35 @@ import {
 } from "@ant-design/icons";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
 import Layout from "~/components/Layout";
 import RecipeViewer from "~/components/RecipeViewer";
-import { api } from "~/utils/api";
+import { api } from "~/trpc/react";
 
 const { Title } = Typography;
 
-export default function RecipeDetail() {
+export default function RecipeDetail({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = use(params);
   const router = useRouter();
-  const { slug } = router.query;
   const { data: session } = useSession();
   const isAdmin = session?.user?.role === "ADMIN";
 
   const { data: recipe, isLoading, error } = api.recipe.bySlug.useQuery(
-    { slug: slug as string },
+    { slug },
     { enabled: !!slug }
   );
 
+  const utils = api.useUtils();
   const deleteRecipe = api.recipe.delete.useMutation({
     onSuccess: () => {
       message.success("Recipe deleted");
+      utils.recipe.list.invalidate();
       router.push("/");
     },
     onError: (err) => message.error(err.message),
   });
 
-  const handleDelete = () => {
+  const handleDelete = useCallback(() => {
     if (!recipe) return;
     Modal.confirm({
       title: "Delete recipe?",
@@ -43,9 +48,9 @@ export default function RecipeDetail() {
       okType: "danger",
       onOk: () => deleteRecipe.mutate({ id: recipe.id }),
     });
-  };
+  }, [recipe, deleteRecipe]);
 
-  const handleExport = async () => {
+  const handleExport = useCallback(() => {
     if (!recipe) return;
     try {
       const blob = new Blob([recipe.cooklangContent], { type: "text/plain" });
@@ -58,7 +63,7 @@ export default function RecipeDetail() {
     } catch {
       message.error("Failed to export");
     }
-  };
+  }, [recipe]);
 
   if (isLoading) {
     return (

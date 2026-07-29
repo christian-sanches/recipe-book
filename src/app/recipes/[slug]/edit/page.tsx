@@ -1,20 +1,22 @@
-import { useRouter } from "next/router";
+"use client";
+
+import { use, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { useEffect } from "react";
 import Head from "next/head";
 import { Spin } from "antd";
 import Layout from "~/components/Layout";
 import RecipeForm from "~/components/RecipeForm";
-import { api } from "~/utils/api";
+import { api } from "~/trpc/react";
 
-export default function EditRecipe() {
+export default function EditRecipe({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = use(params);
   const router = useRouter();
-  const { slug } = router.query;
   const { data: session } = useSession();
   const isAdmin = session?.user?.role === "ADMIN";
 
   const { data: recipe, isLoading } = api.recipe.bySlug.useQuery(
-    { slug: slug as string },
+    { slug },
     { enabled: !!slug }
   );
 

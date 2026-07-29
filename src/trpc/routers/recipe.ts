@@ -1,19 +1,17 @@
-import { z } from "zod";
-import { router, publicProcedure, adminProcedure } from "~/server/api/trpc";
-import { slugify, generateSlug } from "~/lib/utils";
-import { Visibility } from "@prisma/client";
+import { router, publicProcedure, adminProcedure } from "~/trpc/init";
+import { generateSlug } from "~/lib/utils";
+import {
+  createRecipeSchema,
+  updateRecipeSchema,
+  listRecipesSchema,
+  bySlugSchema,
+  deleteRecipeSchema,
+  exportRecipeSchema,
+} from "~/models/recipe";
 
 export const recipeRouter = router({
   list: publicProcedure
-    .input(
-      z.object({
-        query: z.string().optional(),
-        tagSlugs: z.array(z.string()).optional(),
-        visibility: z.nativeEnum(Visibility).optional(),
-        limit: z.number().min(1).max(100).default(20),
-        offset: z.number().min(0).default(0),
-      })
-    )
+    .input(listRecipesSchema)
     .query(async ({ ctx, input }) => {
       const where: any = {};
 
@@ -59,7 +57,7 @@ export const recipeRouter = router({
     }),
 
   bySlug: publicProcedure
-    .input(z.object({ slug: z.string() }))
+    .input(bySlugSchema)
     .query(async ({ ctx, input }) => {
       const recipe = await ctx.db.recipe.findUnique({
         where: { slug: input.slug },
@@ -81,21 +79,7 @@ export const recipeRouter = router({
     }),
 
   create: adminProcedure
-    .input(
-      z.object({
-        title: z.string().min(1).max(200),
-        cooklangContent: z.string(),
-        description: z.string().optional(),
-        servings: z.number().int().positive().optional(),
-        prepTime: z.number().int().positive().optional(),
-        cookTime: z.number().int().positive().optional(),
-        totalTime: z.number().int().positive().optional(),
-        source: z.string().optional(),
-        image: z.string().optional(),
-        visibility: z.nativeEnum(Visibility).default("PUBLIC"),
-        tags: z.array(z.string()).optional(),
-      })
-    )
+    .input(createRecipeSchema)
     .mutation(async ({ ctx, input }) => {
       const slug = generateSlug(input.title);
 
@@ -131,22 +115,7 @@ export const recipeRouter = router({
     }),
 
   update: adminProcedure
-    .input(
-      z.object({
-        id: z.string(),
-        title: z.string().min(1).max(200).optional(),
-        cooklangContent: z.string().optional(),
-        description: z.string().optional(),
-        servings: z.number().int().positive().optional().nullable(),
-        prepTime: z.number().int().positive().optional().nullable(),
-        cookTime: z.number().int().positive().optional().nullable(),
-        totalTime: z.number().int().positive().optional().nullable(),
-        source: z.string().optional().nullable(),
-        image: z.string().optional().nullable(),
-        visibility: z.nativeEnum(Visibility).optional(),
-        tags: z.array(z.string()).optional(),
-      })
-    )
+    .input(updateRecipeSchema)
     .mutation(async ({ ctx, input }) => {
       const { id, tags, ...data } = input;
 
@@ -182,14 +151,14 @@ export const recipeRouter = router({
     }),
 
   delete: adminProcedure
-    .input(z.object({ id: z.string() }))
+    .input(deleteRecipeSchema)
     .mutation(async ({ ctx, input }) => {
       await ctx.db.recipe.delete({ where: { id: input.id } });
       return { success: true };
     }),
 
   export: publicProcedure
-    .input(z.object({ slug: z.string() }))
+    .input(exportRecipeSchema)
     .query(async ({ ctx, input }) => {
       const recipe = await ctx.db.recipe.findUnique({
         where: { slug: input.slug },

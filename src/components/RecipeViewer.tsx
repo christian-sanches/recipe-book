@@ -1,79 +1,18 @@
 import { Card, Tag, Typography, Descriptions, Space } from "antd";
-import {
-  ClockCircleOutlined,
-  FireOutlined,
-} from "@ant-design/icons";
+import { ClockCircleOutlined, FireOutlined } from "@ant-design/icons";
 import { useMemo } from "react";
+import { CooklangParser, HTMLRenderer } from "@cooklang/cooklang";
 
 const { Title, Text, Paragraph } = Typography;
 
-// Simple cooklang parser for display purposes
-function parseCooklang(content: string) {
-  const lines = content.split("\n");
-  const steps: string[] = [];
-  const ingredients: { name: string; quantity?: string; optional?: boolean }[] = [];
-  const cookware: string[] = [];
-  const timers: { quantity?: string }[] = [];
-  const metadata: Record<string, string> = {};
-
-  for (const line of lines) {
-    const trimmed = line.trim();
-
-    // Parse metadata
-    const metaMatch = trimmed.match(/^>>\s*([\w\s]+?):\s*(.+)$/);
-    if (metaMatch) {
-      metadata[metaMatch[1]!.trim().toLowerCase()] = metaMatch[2]!.trim();
-      continue;
-    }
-
-    if (!trimmed) continue;
-
-    // Extract ingredients: @name{quantity} or @name
-    const ingredientRegex = /@([?+-]?)(\w[\w\s]*?)(?:\{([^}]*)\})?/g;
-    let match;
-    while ((match = ingredientRegex.exec(trimmed)) !== null) {
-      const modifier = match[1] || "";
-      const name = match[2]?.trim() ?? "";
-      const quantity = match[3]?.trim();
-      if (name && !name.startsWith("&") && !name.startsWith("@")) {
-        ingredients.push({
-          name,
-          quantity,
-          optional: modifier === "?",
-        });
-      }
-    }
-
-    // Extract cookware: #name
-    const cookwareRegex = /#(\w[\w\s]*?)(?:\{([^}]*)\})?/g;
-    while ((match = cookwareRegex.exec(trimmed)) !== null) {
-      const name = match[1]?.trim() ?? "";
-      if (name) cookware.push(name);
-    }
-
-    // Extract timers: ~{quantity}
-    const timerRegex = /~\{(.+?)\}|~(\w+)\{(.+?)\}/g;
-    while ((match = timerRegex.exec(trimmed)) !== null) {
-      timers.push({ quantity: match[1] || match[3] });
-    }
-
-    steps.push(trimmed);
+function renderSectionsOnly(recipe: any): string {
+  const renderer = new HTMLRenderer();
+  const full = renderer.render(recipe);
+  const hrIndex = full.lastIndexOf("<hr>");
+  if (hrIndex !== -1) {
+    return full.slice(hrIndex + 4);
   }
-
-  return { steps, ingredients, cookware, timers, metadata };
-}
-
-function renderCooklangText(text: string): string {
-  return text
-    .replace(
-      /@([?+-]?)(\w[\w\s]*?)(?:\{([^}]*)\})?/g,
-      (_, modifier, name, qty) => {
-        const prefix = modifier === "?" ? "(optional) " : "";
-        return `${prefix}[${name}${qty ? `: ${qty}` : ""}]`;
-      }
-    )
-    .replace(/#(\w[\w\s]*?)(?:\{([^}]*)\})?/g, "{$1}")
-    .replace(/~\{(.+?)\}|~(\w+)\{(.+?)\}/g, "⏱ $1$3");
+  return full;
 }
 
 interface RecipeViewerProps {
@@ -95,7 +34,30 @@ export default function RecipeViewer({
   totalTime,
   source,
 }: RecipeViewerProps) {
-  const parsed = useMemo(() => parseCooklang(cooklangContent), [cooklangContent]);
+  const rendered = useMemo(() => {
+    try {
+      const parser = new CooklangParser();
+      const [recipe] = parser.parse(cooklangContent);
+
+      const uniqueIngredients = recipe.ingredients.filter(
+        (ing: any, i: number, arr: any[]) =>
+          arr.findIndex((x: any) => x.name === ing.name) === i
+      );
+      const uniqueCookware = [
+        ...new Set(recipe.cookware.map((c: any) => c.name)),
+      ] as string[];
+
+      const stepsHtml = renderSectionsOnly(recipe);
+
+      return { html: stepsHtml, ingredients: uniqueIngredients, cookware: uniqueCookware };
+    } catch {
+      return {
+        html: `<p>${cooklangContent}</p>`,
+        ingredients: [],
+        cookware: [],
+      };
+    }
+  }, [cooklangContent]);
 
   return (
     <div>
@@ -128,12 +90,11 @@ export default function RecipeViewer({
         </Paragraph>
       )}
 
-      {/* Ingredients */}
-      {parsed.ingredients.length > 0 && (
+      {rendered.ingredients.length > 0 && (
         <>
           <Title level={3}>Ingredients</Title>
           <Card size="small" style={{ marginBottom: 24 }}>
-            {parsed.ingredients.map((ing, i) => (
+            {rendered.ingredients.map((ing: any, i: number) => (
               <div
                 key={i}
                 style={{
@@ -141,31 +102,21 @@ export default function RecipeViewer({
                   justifyContent: "space-between",
                   padding: "4px 0",
                   borderBottom:
-                    i < parsed.ingredients.length - 1 ? "1px solid #f0f0f0" : "none",
+                    i < rendered.ingredients.length - 1 ? "1px solid #f0f0f0" : "none",
                 }}
               >
-                <Text
-                  delete={ing.optional}
-                  type={ing.optional ? "secondary" : undefined}
-                >
-                  {ing.optional && (
-                    <Tag style={{ fontSize: 10, marginRight: 4 }}>Optional</Tag>
-                  )}
-                  {ing.name}
-                </Text>
-                {ing.quantity && <Text code>{ing.quantity}</Text>}
+                <Text>{ing.name}</Text>
               </div>
             ))}
           </Card>
         </>
       )}
 
-      {/* Cookware */}
-      {parsed.cookware.length > 0 && (
+      {rendered.cookware.length > 0 && (
         <>
           <Title level={3}>Cookware</Title>
           <Space wrap style={{ marginBottom: 24 }}>
-            {[...new Set(parsed.cookware)].map((item, i) => (
+            {rendered.cookware.map((item: string, i: number) => (
               <Tag key={i} color="processing">
                 {item}
               </Tag>
@@ -174,26 +125,13 @@ export default function RecipeViewer({
         </>
       )}
 
-      {/* Steps */}
-      {parsed.steps.length > 0 && (
+      {rendered.html && (
         <>
           <Title level={3}>Instructions</Title>
-          {parsed.steps.map((step, i) => (
-            <Paragraph
-              key={i}
-              style={{
-                padding: "8px 12px",
-                background: i % 2 === 0 ? "#fafafa" : "transparent",
-                borderRadius: 6,
-                marginBottom: 4,
-              }}
-            >
-              <Text strong style={{ marginRight: 8 }}>
-                {i + 1}.
-              </Text>
-              {renderCooklangText(step)}
-            </Paragraph>
-          ))}
+          <div
+            className="cooklang-steps"
+            dangerouslySetInnerHTML={{ __html: rendered.html }}
+          />
         </>
       )}
     </div>

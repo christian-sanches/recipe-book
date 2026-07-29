@@ -1,26 +1,15 @@
-import type { GetServerSideProps } from "next";
+"use client";
+
 import { Button, Card, Typography, Space } from "antd";
 import { GoogleOutlined, BookOutlined, UserOutlined } from "@ant-design/icons";
 import { signIn, useSession } from "next-auth/react";
-import { useRouter } from "next/router";
+import { useRouter } from "next/navigation";
 import Head from "next/head";
 import { useEffect } from "react";
 
 const { Title, Text } = Typography;
 
-interface LoginProps {
-  devMode: boolean;
-}
-
-export const getServerSideProps: GetServerSideProps<LoginProps> = async () => {
-  return {
-    props: {
-      devMode: process.env.DEV_MODE === "true",
-    },
-  };
-};
-
-export default function Login({ devMode }: LoginProps) {
+export default function LoginClient({ devMode }: { devMode: boolean }) {
   const { data: session } = useSession();
   const router = useRouter();
 

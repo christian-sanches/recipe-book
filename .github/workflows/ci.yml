@@ -1,0 +1,54 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: recipe_book
+          POSTGRES_USER: recipe_book
+          POSTGRES_PASSWORD: test-password
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - run: npm run typecheck
+
+      - run: npm run lint
+
+      - run: npm test
+
+      - name: Generate Prisma client
+        run: npx prisma generate
+
+      - name: Push schema to test DB
+        run: npx prisma db push
+        env:
+          DATABASE_URL: postgresql://recipe_book:test-password@localhost:5432/recipe_book
+
+      - run: npm run build
+        env:
+          DATABASE_URL: postgresql://recipe_book:test-password@localhost:5432/recipe_book
+          NEXTAUTH_SECRET: ci-test-secret
+          NEXTAUTH_URL: http://localhost:3000

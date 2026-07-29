@@ -1,3 +1,5 @@
+"use client";
+
 import Head from "next/head";
 import { useSession } from "next-auth/react";
 import { Input, Typography, Spin, Empty, Row, Col, Tag as AntTag, Space } from "antd";
@@ -5,7 +7,7 @@ import { SearchOutlined } from "@ant-design/icons";
 import { useState } from "react";
 import Layout from "~/components/Layout";
 import RecipeCard from "~/components/RecipeCard";
-import { api } from "~/utils/api";
+import { api } from "~/trpc/react";
 
 const { Title } = Typography;
 

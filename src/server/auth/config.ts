@@ -18,7 +18,6 @@ declare module "next-auth" {
 
 const providers: NextAuthConfig["providers"] = [];
 
-// Google OAuth — only when credentials are provided
 if (process.env.AUTH_GOOGLE_ID) {
   providers.push(
     GoogleProvider({
@@ -28,7 +27,6 @@ if (process.env.AUTH_GOOGLE_ID) {
   );
 }
 
-// Dev mode — auto-login as admin, no Google required
 if (process.env.DEV_MODE === "true") {
   providers.push(
     Credentials({
@@ -86,7 +84,6 @@ export const authConfig = {
     }),
     signIn: async ({ user }) => {
       if (!user.email) return false;
-      // Dev mode always allows the dev user
       if (process.env.DEV_MODE === "true" && user.email === "dev@fleflis.dev") {
         return true;
       }

@@ -48,7 +48,7 @@ export default function RecipeCard({ recipe }: RecipeCardProps) {
             </div>
           )
         }
-        bodyStyle={{ padding: 12 }}
+        styles={{ body: { padding: 12 } }}
       >
         <Card.Meta
           title={

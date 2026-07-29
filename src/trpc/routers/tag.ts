@@ -1,6 +1,6 @@
-import { z } from "zod";
-import { router, publicProcedure, adminProcedure } from "~/server/api/trpc";
+import { router, publicProcedure, adminProcedure } from "~/trpc/init";
 import { slugify } from "~/lib/utils";
+import { createTagSchema } from "~/models/tag";
 
 export const tagRouter = router({
   list: publicProcedure.query(async ({ ctx }) => {
@@ -13,11 +13,7 @@ export const tagRouter = router({
   }),
 
   create: adminProcedure
-    .input(
-      z.object({
-        name: z.string().min(1).max(100),
-      })
-    )
+    .input(createTagSchema)
     .mutation(async ({ ctx, input }) => {
       const slug = slugify(input.name);
 
