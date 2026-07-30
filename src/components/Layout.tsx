@@ -6,6 +6,7 @@ import {
   Dropdown,
   Typography,
   Grid,
+  theme,
 } from "antd";
 import {
   UserOutlined,
@@ -28,6 +29,7 @@ import { useTranslation } from "~/i18n";
 const { Header, Content, Footer } = AntLayout;
 const { Text } = Typography;
 const { useBreakpoint } = Grid;
+const { useToken } = theme;
 
 export default function Layout({ children }: { children: React.ReactNode }) {
   const { data: session } = useSession();
@@ -36,6 +38,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   const isDesktop = screens.md;
   const { theme, toggleTheme } = useTheme();
   const { t, lang, setLang } = useTranslation();
+  const { token } = useToken();
 
   const userMenuItems: MenuProps["items"] = [
     {
@@ -58,8 +61,8 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 
   const langLabel =
     lang === "en"
-      ? "🇧🇷 Português"
-      : "🇺🇸 English";
+      ? "🇺🇸 English"
+      : "🇧🇷 Português";
 
   const menuItems: MenuProps["items"] = [
     // ── Auth section ──
@@ -141,8 +144,8 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
-          background: "#fff",
-          borderBottom: "1px solid #f0f0f0",
+          background: token.colorBgContainer,
+          borderBottom: `1px solid ${token.colorBorderSecondary}`,
           padding: "0 24px",
           position: "sticky",
           top: 0,

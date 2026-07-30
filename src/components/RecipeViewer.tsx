@@ -17,13 +17,11 @@ function renderSectionsOnly(recipe: any): string {
 }
 
 // ── Ingredient aggregation ─────────────────────────────────────
-// The parser returns every occurrence of each ingredient, including
-// references without quantity. We aggregate them so the same ingredient
-// isn't listed twice, and we sum quantities when units match.
 interface AggregatedIngredient {
   name: string;
   quantity: number | null;
   unit: string | null;
+  note: string | null;
 }
 
 function extractQty(ing: any): number | null {
@@ -39,22 +37,22 @@ function aggregateIngredients(ingredients: any[]): AggregatedIngredient[] {
   const map = new Map<string, AggregatedIngredient>();
 
   for (const ing of ingredients) {
-    const key = ing.name.toLowerCase();
+    // Build a dedup key that includes the note so different preparations
+    // (e.g. beaten egg vs whole egg) are listed separately
+    const note = ing.note ?? null;
+    const key = `${ing.name.toLowerCase()}::${note ?? ""}`;
     const qty = extractQty(ing);
     const unit = ing.quantity?.unit ?? null;
     const existing = map.get(key);
 
     if (!existing) {
-      map.set(key, { name: ing.name, quantity: qty, unit });
+      map.set(key, { name: ing.name, quantity: qty, unit, note });
     } else if (qty !== null && existing.unit === unit && unit !== null) {
-      // Same unit → sum
       existing.quantity = (existing.quantity ?? 0) + qty;
     } else if (qty !== null && existing.quantity === null) {
-      // First time we see a quantity for this ingredient
       existing.quantity = qty;
       existing.unit = unit;
     }
-    // Otherwise keep the existing entry
   }
 
   return Array.from(map.values());
@@ -158,11 +156,14 @@ export default function RecipeViewer({
                     padding: "6px 0",
                     borderBottom:
                       i < rendered.ingredients.length - 1
-                        ? "1px solid #f0f0f0"
+                        ? "1px solid var(--border-color, #f0f0f0)"
                         : "none",
                   }}
                 >
-                  <Text>{ing.name}</Text>
+                  <Text>
+                    {ing.name}
+                    {ing.note ? <Text type="secondary"> ({ing.note})</Text> : null}
+                  </Text>
                   <Text
                     type="secondary"
                     style={{
