@@ -6,12 +6,14 @@ import { signIn, useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Head from "next/head";
 import { useEffect } from "react";
+import { useTranslation } from "~/i18n";
 
 const { Title, Text } = Typography;
 
 export default function LoginClient({ devMode }: { devMode: boolean }) {
   const { data: session } = useSession();
   const router = useRouter();
+  const { t } = useTranslation();
 
   useEffect(() => {
     if (session) {
@@ -38,9 +40,9 @@ export default function LoginClient({ devMode }: { devMode: boolean }) {
           <Space direction="vertical" size="large" style={{ width: "100%" }}>
             <BookOutlined style={{ fontSize: 48, color: "#1677ff" }} />
             <Title level={3} style={{ margin: 0 }}>
-              Recipe Book
+              {t("Recipe book")}
             </Title>
-            <Text type="secondary">Sign in to manage your recipes</Text>
+            <Text type="secondary">{t("Sign in to manage your recipes")}</Text>
 
             {devMode ? (
               <Button
@@ -52,7 +54,7 @@ export default function LoginClient({ devMode }: { devMode: boolean }) {
                   signIn("credentials", { callbackUrl: "/", redirect: true })
                 }
               >
-                Dev Login (Admin)
+                {t("Dev Login (Admin)")}
               </Button>
             ) : (
               <Button
@@ -62,7 +64,7 @@ export default function LoginClient({ devMode }: { devMode: boolean }) {
                 block
                 onClick={() => signIn("google", { callbackUrl: "/" })}
               >
-                Sign in with Google
+                {t("Sign in with Google")}
               </Button>
             )}
           </Space>

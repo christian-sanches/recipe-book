@@ -2,6 +2,7 @@ import { Card, Tag, Typography, Descriptions, Space } from "antd";
 import { ClockCircleOutlined, FireOutlined } from "@ant-design/icons";
 import { useMemo } from "react";
 import { CooklangParser, HTMLRenderer } from "@cooklang/cooklang";
+import { useTranslation } from "~/i18n";
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -59,9 +60,9 @@ function aggregateIngredients(ingredients: any[]): AggregatedIngredient[] {
   return Array.from(map.values());
 }
 
-function formatQty(qty: number | null, unit: string | null): string {
+function formatQty(qty: number | null, unit: string | null, t: (key: string) => string): string {
   if (qty === null && !unit) return "";
-  if (qty === null) return `(to taste)`;
+  if (qty === null) return `(${t("to taste")})`;
   const formatted = Number.isInteger(qty) ? qty.toString() : qty.toFixed(1);
   return unit ? `${formatted} ${unit}` : formatted;
 }
@@ -108,26 +109,28 @@ export default function RecipeViewer({
     }
   }, [cooklangContent]);
 
+  const { t } = useTranslation();
+
   return (
     <div>
       {(servings || prepTime || cookTime || totalTime) && (
         <Descriptions column={{ xs: 1, sm: 2, md: 4 }} style={{ marginBottom: 24 }}>
           {servings && (
-            <Descriptions.Item label="Servings">{servings}</Descriptions.Item>
+            <Descriptions.Item label={t("Servings")}>{servings}</Descriptions.Item>
           )}
           {prepTime && (
-            <Descriptions.Item label="Prep time">
-              <ClockCircleOutlined /> {prepTime} min
+            <Descriptions.Item label={t("Prep time")}>
+              <ClockCircleOutlined /> {prepTime}{t(" min")}
             </Descriptions.Item>
           )}
           {cookTime && (
-            <Descriptions.Item label="Cook time">
-              <FireOutlined /> {cookTime} min
+            <Descriptions.Item label={t("Cook time")}>
+              <FireOutlined /> {cookTime}{t(" min")}
             </Descriptions.Item>
           )}
           {totalTime && (
-            <Descriptions.Item label="Total time">
-              <ClockCircleOutlined /> {totalTime} min
+            <Descriptions.Item label={t("Total time")}>
+              <ClockCircleOutlined /> {totalTime}{t(" min")}
             </Descriptions.Item>
           )}
         </Descriptions>
@@ -135,16 +138,16 @@ export default function RecipeViewer({
 
       {source && (
         <Paragraph type="secondary" style={{ marginBottom: 16 }}>
-          Source: {source}
+          {t("Source:")} {source}
         </Paragraph>
       )}
 
       {rendered.ingredients.length > 0 && (
         <>
-          <Title level={3}>Ingredients</Title>
+          <Title level={3}>{t("Ingredients")}</Title>
           <Card size="small" style={{ marginBottom: 24 }}>
             {rendered.ingredients.map((ing, i) => {
-              const qtyText = formatQty(ing.quantity, ing.unit);
+              const qtyText = formatQty(ing.quantity, ing.unit, t);
               return (
                 <div
                   key={i}
@@ -180,7 +183,7 @@ export default function RecipeViewer({
 
       {rendered.cookware.length > 0 && (
         <>
-          <Title level={3}>Cookware</Title>
+          <Title level={3}>{t("Cookware")}</Title>
           <Space wrap style={{ marginBottom: 24 }}>
             {rendered.cookware.map((item: string, i: number) => (
               <Tag key={i} color="processing">
@@ -193,7 +196,7 @@ export default function RecipeViewer({
 
       {rendered.html && (
         <>
-          <Title level={3}>Instructions</Title>
+          <Title level={3}>{t("Instructions")}</Title>
           <div
             className="cooklang-steps"
             dangerouslySetInnerHTML={{ __html: rendered.html }}

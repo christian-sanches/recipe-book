@@ -1,25 +1,22 @@
 "use client";
 
 import { SessionProvider } from "next-auth/react";
-import { ConfigProvider, App as AntApp } from "antd";
+import { App as AntApp } from "antd";
+import { ThemeProvider } from "~/contexts/ThemeContext";
+import { I18nProvider } from "~/i18n";
 import { TRPCProvider } from "~/trpc/react";
 import "~/styles/globals.css";
-
-const theme = {
-  token: {
-    colorPrimary: "#1677ff",
-    borderRadius: 8,
-  },
-};
 
 export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <SessionProvider>
-      <ConfigProvider theme={theme}>
-        <AntApp>
-          <TRPCProvider>{children}</TRPCProvider>
-        </AntApp>
-      </ConfigProvider>
+      <I18nProvider>
+        <ThemeProvider>
+          <AntApp>
+            <TRPCProvider>{children}</TRPCProvider>
+          </AntApp>
+        </ThemeProvider>
+      </I18nProvider>
     </SessionProvider>
   );
 }

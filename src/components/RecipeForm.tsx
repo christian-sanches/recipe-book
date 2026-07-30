@@ -15,6 +15,7 @@ import { SaveOutlined, EyeOutlined } from "@ant-design/icons";
 import { useRouter } from "next/navigation";
 import { api } from "~/trpc/react";
 import RecipeViewer from "./RecipeViewer";
+import { useTranslation } from "~/i18n";
 
 const { Title } = Typography;
 const { TextArea } = Input;
@@ -44,18 +45,19 @@ export default function RecipeForm({ initialData, isEditing }: RecipeFormProps) 
   const [cooklangContent, setCooklangContent] = useState(
     initialData?.cooklangContent ?? ""
   );
+  const { t } = useTranslation();
 
   const { data: allTags } = api.tag.list.useQuery();
   const createRecipe = api.recipe.create.useMutation({
     onSuccess: (recipe) => {
-      message.success("Recipe created!");
+      message.success(t("Recipe created!"));
       router.push(`/recipes/${recipe.slug}`);
     },
     onError: (err) => message.error(err.message),
   });
   const updateRecipe = api.recipe.update.useMutation({
     onSuccess: (recipe) => {
-      message.success("Recipe updated!");
+      message.success(t("Recipe updated!"));
       router.push(`/recipes/${recipe.slug}`);
     },
     onError: (err) => message.error(err.message),
@@ -138,16 +140,16 @@ export default function RecipeForm({ initialData, isEditing }: RecipeFormProps) 
 
   return (
     <div style={{ maxWidth: 900, margin: "0 auto" }}>
-      <Title level={2}>{isEditing ? "Edit Recipe" : "New Recipe"}</Title>
+      <Title level={2}>{isEditing ? t("Edit Recipe") : t("New Recipe")}</Title>
 
       {preview ? (
         <div>
           <Button onClick={() => setPreview(false)} style={{ marginBottom: 16 }}>
-            Back to editing
+            {t("Back to editing")}
           </Button>
           <RecipeViewer
             cooklangContent={cooklangContent}
-            title={(form.getFieldValue("title") as string) ?? "Recipe Title"}
+            title={(form.getFieldValue("title") as string) ?? t("Recipe Title")}
             description={form.getFieldValue("description") as string}
             servings={form.getFieldValue("servings") as number}
             prepTime={form.getFieldValue("prepTime") as number}
@@ -176,20 +178,20 @@ export default function RecipeForm({ initialData, isEditing }: RecipeFormProps) 
         >
           <Form.Item
             name="title"
-            label="Recipe Title"
-            rules={[{ required: true, message: "Please enter a title" }]}
+            label={t("Recipe Title")}
+            rules={[{ required: true, message: t("Please enter a title") }]}
           >
-            <Input placeholder="e.g. Grandma's Tomato Sauce" size="large" />
+            <Input placeholder={t("e.g. Grandma's Tomato Sauce")} size="large" />
           </Form.Item>
 
-          <Form.Item name="description" label="Description">
-            <TextArea rows={2} placeholder="A short description of the recipe..." />
+          <Form.Item name="description" label={t("Description")}>
+            <TextArea rows={2} placeholder={t("A short description of the recipe...")} />
           </Form.Item>
 
           <Form.Item
-            label="Cooklang Content"
+            label={t("Cooklang Content")}
             required
-            help="Write your recipe in Cooklang markup"
+            help={t("Write your recipe in Cooklang markup")}
           >
             <TextArea
               rows={15}
@@ -206,47 +208,47 @@ export default function RecipeForm({ initialData, isEditing }: RecipeFormProps) 
               onClick={() => setPreview(true)}
               style={{ marginTop: 8 }}
             >
-              Preview
+              {t("Preview")}
             </Button>
           </Form.Item>
 
           <Divider />
 
           <Space size={24} wrap>
-            <Form.Item name="servings" label="Servings">
+            <Form.Item name="servings" label={t("Servings")}>
               <InputNumber min={1} placeholder="4" />
             </Form.Item>
-            <Form.Item name="prepTime" label="Prep Time (min)">
+            <Form.Item name="prepTime" label={t("Prep Time (min)")}>
               <InputNumber min={0} placeholder="15" />
             </Form.Item>
-            <Form.Item name="cookTime" label="Cook Time (min)">
+            <Form.Item name="cookTime" label={t("Cook Time (min)")}>
               <InputNumber min={0} placeholder="30" />
             </Form.Item>
-            <Form.Item name="totalTime" label="Total Time (min)">
+            <Form.Item name="totalTime" label={t("Total Time (min)")}>
               <InputNumber min={0} placeholder="45" />
             </Form.Item>
           </Space>
 
-          <Form.Item name="source" label="Source">
-            <Input placeholder="e.g. https://example.com/recipe or Family Cookbook p.42" />
+          <Form.Item name="source" label={t("Source")}>
+            <Input placeholder={t("e.g. Grandma's Tomato Sauce")} />
           </Form.Item>
 
           <Form.Item
             name="tags"
-            label="Tags"
-            help="Type a name and press Enter or comma to create a new tag"
+            label={t("Tags")}
+            help={t("Type a name and press Enter or comma to create a new tag")}
           >
             <Select
               mode="tags"
-              placeholder="Search existing tags or type to create new ones"
+              placeholder={t("Search existing tags or type to create new ones")}
               options={tagOptions}
               tokenSeparators={[","]}
               allowClear
             />
           </Form.Item>
 
-          <Form.Item name="visibility" label="Public" valuePropName="checked">
-            <Switch checkedChildren="Public" unCheckedChildren="Hidden" />
+          <Form.Item name="visibility" label={t("Public")} valuePropName="checked">
+            <Switch checkedChildren={t("Public")} unCheckedChildren={t("Hidden")} />
           </Form.Item>
 
           <Form.Item>
@@ -257,7 +259,7 @@ export default function RecipeForm({ initialData, isEditing }: RecipeFormProps) 
               size="large"
               loading={createRecipe.isPending || updateRecipe.isPending}
             >
-              {isEditing ? "Update Recipe" : "Create Recipe"}
+              {isEditing ? t("Update Recipe") : t("Create Recipe")}
             </Button>
           </Form.Item>
         </Form>
