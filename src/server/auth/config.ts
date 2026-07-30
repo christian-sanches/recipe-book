@@ -72,14 +72,14 @@ export const authConfig = {
         token.role = user.role;
         token.id = user.id;
       }
-      // Re-check admin role on signIn or update — ensures admin users
-      // created via Google OAuth (which defaults to VIEWER) get upgraded
-      if ((trigger === "signIn" || trigger === "update") && token.email) {
+      // Check if user should have admin role — runs on any request
+      // so existing sessions get upgraded without needing to re-login
+      if (token.email) {
         const adminEmails = (process.env.ADMIN_EMAILS ?? "")
           .split(",")
           .map((e) => e.trim().toLowerCase())
           .filter(Boolean);
-        if (adminEmails.includes((token.email as string).toLowerCase())) {
+        if (adminEmails.includes((token.email as string).toLowerCase()) && token.role !== "ADMIN") {
           try {
             const userFromDb = await db.user.findUnique({
               where: { email: token.email as string },
@@ -89,8 +89,8 @@ export const authConfig = {
                 where: { id: userFromDb.id },
                 data: { role: "ADMIN" },
               });
-              token.role = "ADMIN";
             }
+            token.role = "ADMIN";
           } catch {
             // ignore
           }
