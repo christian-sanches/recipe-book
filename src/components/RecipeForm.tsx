@@ -60,19 +60,75 @@ export default function RecipeForm({ initialData, isEditing }: RecipeFormProps) 
     },
     onError: (err) => message.error(err.message),
   });
+  const createTag = api.tag.create.useMutation();
+
+  // Build lookup maps: ID → tag, and name (lowercase) → ID
+  const tagNameToId = new Map<string, string>();
+  for (const t of allTags ?? []) {
+    tagNameToId.set(t.name.toLowerCase(), t.id);
+  }
 
   const tagOptions =
-    allTags?.map((t: { _count: { recipes: number }; id: string; name: string; slug: string }) => ({
+    allTags?.map((t) => ({
       label: `${t.name} (${t._count.recipes})`,
       value: t.id,
     })) ?? [];
 
+  // ── Tag value resolver ──────────────────────────────────
+  // With mode="tags", existing tags come through as their ID,
+  // while new typed tags come through as the raw name string.
+  // We resolve new names to IDs via find-or-create.
+  async function resolveTags(rawTags: string[]): Promise<string[]> {
+    const resolved: string[] = [];
+    const toCreate: string[] = [];
+
+    for (const val of rawTags) {
+      const trimmed = val.trim();
+      if (!trimmed) continue;
+
+      // Check if it's an existing tag ID (from dropdown selection)
+      if (tagOptions.some((o) => o.value === trimmed)) {
+        resolved.push(trimmed);
+        continue;
+      }
+
+      // Check if it matches an existing tag by name
+      const existingId = tagNameToId.get(trimmed.toLowerCase());
+      if (existingId) {
+        resolved.push(existingId);
+        continue;
+      }
+
+      // New tag name — create it
+      toCreate.push(trimmed);
+    }
+
+    for (const name of toCreate) {
+      try {
+        const tag = await createTag.mutateAsync({ name });
+        resolved.push(tag.id);
+      } catch {
+        // Tag already exists (race condition) or error — skip
+      }
+    }
+
+    return resolved;
+  }
+
   const handleSubmit = async (values: Record<string, unknown>) => {
+    let tagIds: string[] | undefined;
+
+    if (Array.isArray(values.tags) && values.tags.length > 0) {
+      tagIds = await resolveTags(values.tags as string[]);
+    }
+
     const payload = {
       ...values,
       cooklangContent,
+      tags: tagIds,
       visibility: values.visibility ? "PUBLIC" : "HIDDEN",
     };
+
     if (isEditing && initialData) {
       updateRecipe.mutate({ id: initialData.id, ...payload } as any);
     } else {
@@ -175,16 +231,21 @@ export default function RecipeForm({ initialData, isEditing }: RecipeFormProps) 
             <Input placeholder="e.g. https://example.com/recipe or Family Cookbook p.42" />
           </Form.Item>
 
-          <Form.Item name="tags" label="Tags">
+          <Form.Item
+            name="tags"
+            label="Tags"
+            help="Type a name and press Enter or comma to create a new tag"
+          >
             <Select
-              mode="multiple"
-              placeholder="Select tags"
+              mode="tags"
+              placeholder="Search existing tags or type to create new ones"
               options={tagOptions}
+              tokenSeparators={[","]}
               allowClear
             />
           </Form.Item>
 
-          <Form.Item name="visibility" label="Public" valuePropName="checked" >
+          <Form.Item name="visibility" label="Public" valuePropName="checked">
             <Switch checkedChildren="Public" unCheckedChildren="Hidden" />
           </Form.Item>
 
