@@ -15,11 +15,14 @@ import {
   LogoutOutlined,
   BookOutlined,
   MenuOutlined,
+  SunOutlined,
+  MoonOutlined,
 } from "@ant-design/icons";
 import { useSession, signOut } from "next-auth/react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { MenuProps } from "antd";
+import { useTheme } from "~/contexts/ThemeContext";
 
 const { Header, Content, Footer } = AntLayout;
 const { Text } = Typography;
@@ -30,7 +33,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const screens = useBreakpoint();
   const isDesktop = screens.md;
-  const [menuOpen, setMenuOpen] = useState(false);
+  const { theme, toggleTheme } = useTheme();
 
   const userMenuItems: MenuProps["items"] = [
     {
@@ -104,6 +107,14 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               ]),
         ]
       : []),
+    // ── Settings section ──
+    { type: "divider" },
+    {
+      key: "theme",
+      icon: theme === "dark" ? <SunOutlined /> : <MoonOutlined />,
+      label: theme === "dark" ? "Light mode" : "Dark mode",
+      onClick: toggleTheme,
+    },
   ];
 
   return (
@@ -166,7 +177,6 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             menu={{ items: menuItems }}
             placement="bottomRight"
             trigger={["click"]}
-            onOpenChange={setMenuOpen}
           >
             <Button
               type="text"
