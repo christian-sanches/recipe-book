@@ -15,6 +15,58 @@ function renderSectionsOnly(recipe: any): string {
   return full;
 }
 
+// ── Ingredient aggregation ─────────────────────────────────────
+// The parser returns every occurrence of each ingredient, including
+// references without quantity. We aggregate them so the same ingredient
+// isn't listed twice, and we sum quantities when units match.
+interface AggregatedIngredient {
+  name: string;
+  quantity: number | null;
+  unit: string | null;
+}
+
+function extractQty(ing: any): number | null {
+  try {
+    const v = ing.quantity?.value?.value?.value;
+    return typeof v === "number" ? v : null;
+  } catch {
+    return null;
+  }
+}
+
+function aggregateIngredients(ingredients: any[]): AggregatedIngredient[] {
+  const map = new Map<string, AggregatedIngredient>();
+
+  for (const ing of ingredients) {
+    const key = ing.name.toLowerCase();
+    const qty = extractQty(ing);
+    const unit = ing.quantity?.unit ?? null;
+    const existing = map.get(key);
+
+    if (!existing) {
+      map.set(key, { name: ing.name, quantity: qty, unit });
+    } else if (qty !== null && existing.unit === unit && unit !== null) {
+      // Same unit → sum
+      existing.quantity = (existing.quantity ?? 0) + qty;
+    } else if (qty !== null && existing.quantity === null) {
+      // First time we see a quantity for this ingredient
+      existing.quantity = qty;
+      existing.unit = unit;
+    }
+    // Otherwise keep the existing entry
+  }
+
+  return Array.from(map.values());
+}
+
+function formatQty(qty: number | null, unit: string | null): string {
+  if (qty === null && !unit) return "";
+  if (qty === null) return `(to taste)`;
+  const formatted = Number.isInteger(qty) ? qty.toString() : qty.toFixed(1);
+  return unit ? `${formatted} ${unit}` : formatted;
+}
+
+// ── Component ──────────────────────────────────────────────────
 interface RecipeViewerProps {
   cooklangContent: string;
   title: string;
@@ -39,21 +91,18 @@ export default function RecipeViewer({
       const parser = new CooklangParser();
       const [recipe] = parser.parse(cooklangContent);
 
-      const uniqueIngredients = recipe.ingredients.filter(
-        (ing: any, i: number, arr: any[]) =>
-          arr.findIndex((x: any) => x.name === ing.name) === i
-      );
+      const ingredients = aggregateIngredients(recipe.ingredients);
       const uniqueCookware = [
         ...new Set(recipe.cookware.map((c: any) => c.name)),
       ] as string[];
 
       const stepsHtml = renderSectionsOnly(recipe);
 
-      return { html: stepsHtml, ingredients: uniqueIngredients, cookware: uniqueCookware };
+      return { html: stepsHtml, ingredients, cookware: uniqueCookware };
     } catch {
       return {
         html: `<p>${cooklangContent}</p>`,
-        ingredients: [],
+        ingredients: [] as AggregatedIngredient[],
         cookware: [],
       };
     }
@@ -94,20 +143,37 @@ export default function RecipeViewer({
         <>
           <Title level={3}>Ingredients</Title>
           <Card size="small" style={{ marginBottom: 24 }}>
-            {rendered.ingredients.map((ing: any, i: number) => (
-              <div
-                key={i}
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  padding: "4px 0",
-                  borderBottom:
-                    i < rendered.ingredients.length - 1 ? "1px solid #f0f0f0" : "none",
-                }}
-              >
-                <Text>{ing.name}</Text>
-              </div>
-            ))}
+            {rendered.ingredients.map((ing, i) => {
+              const qtyText = formatQty(ing.quantity, ing.unit);
+              return (
+                <div
+                  key={i}
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    padding: "6px 0",
+                    borderBottom:
+                      i < rendered.ingredients.length - 1
+                        ? "1px solid #f0f0f0"
+                        : "none",
+                  }}
+                >
+                  <Text>{ing.name}</Text>
+                  <Text
+                    type="secondary"
+                    style={{
+                      fontFamily: "monospace",
+                      fontSize: 13,
+                      whiteSpace: "nowrap",
+                      marginLeft: 16,
+                    }}
+                  >
+                    {qtyText || "\u00A0"}
+                  </Text>
+                </div>
+              );
+            })}
           </Card>
         </>
       )}
