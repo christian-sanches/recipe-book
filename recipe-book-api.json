@@ -1,0 +1,254 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "Recipe Book API",
+    "version": "1.0.0",
+    "description": "API para gerenciar receitas culinárias escritas em formato Cooklang. Permite criar, listar, visualizar, editar e deletar receitas, além de gerenciar tags."
+  },
+  "servers": [
+    {
+      "url": "https://recipes.endless-point.org",
+      "description": "Production server"
+    }
+  ],
+  "paths": {
+    "/api/recipes": {
+      "get": {
+        "summary": "Listar receitas",
+        "description": "Lista receitas com filtros opcionais. Sem API Key, só retorna receitas públicas.",
+        "operationId": "listRecipes",
+        "parameters": [
+          { "name": "query", "in": "query", "schema": { "type": "string" }, "description": "Busca por nome ou ingrediente" },
+          { "name": "tags", "in": "query", "schema": { "type": "string" }, "description": "Filtrar por slugs de tags separadas por vírgula (ex: 'italiana,sobremesa')" },
+          { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 20 }, "description": "Máximo de resultados (max 100)" },
+          { "name": "offset", "in": "query", "schema": { "type": "integer", "default": 0 }, "description": "Pular N resultados" }
+        ],
+        "responses": {
+          "200": {
+            "description": "Lista de receitas",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "items": { "type": "array", "items": { "$ref": "#/components/schemas/Recipe" } },
+                    "total": { "type": "integer" },
+                    "limit": { "type": "integer" },
+                    "offset": { "type": "integer" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Criar receita",
+        "description": "Cria uma nova receita. Requer API Key (admin).",
+        "operationId": "createRecipe",
+        "security": [{ "ApiKeyAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["title", "cooklangContent"],
+                "properties": {
+                  "title": { "type": "string", "description": "Título da receita" },
+                  "cooklangContent": { "type": "string", "description": "Conteúdo em formato Cooklang" },
+                  "description": { "type": "string", "description": "Descrição curta" },
+                  "servings": { "type": "integer", "description": "Porções" },
+                  "prepTime": { "type": "integer", "description": "Tempo de preparo (min)" },
+                  "cookTime": { "type": "integer", "description": "Tempo de cozimento (min)" },
+                  "totalTime": { "type": "integer", "description": "Tempo total (min)" },
+                  "source": { "type": "string", "description": "Fonte da receita" },
+                  "visibility": { "type": "string", "enum": ["PUBLIC", "HIDDEN"], "default": "PUBLIC" },
+                  "tags": { "type": "array", "items": { "type": "string" }, "description": "IDs, slugs ou nomes de tags (novas são criadas automaticamente)" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "Receita criada", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Recipe" } } } },
+          "400": { "description": "Dados inválidos" },
+          "403": { "description": "Não autorizado" }
+        }
+      }
+    },
+    "/api/recipes/{slug}": {
+      "get": {
+        "summary": "Buscar receita por slug",
+        "description": "Retorna os detalhes completos de uma receita pelo slug.",
+        "operationId": "getRecipe",
+        "parameters": [
+          { "name": "slug", "in": "path", "required": true, "schema": { "type": "string" }, "description": "Slug da receita (ex: 'strogonoff-de-frango')" }
+        ],
+        "responses": {
+          "200": { "description": "Detalhes da receita", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Recipe" } } } },
+          "404": { "description": "Receita não encontrada" }
+        }
+      },
+      "patch": {
+        "summary": "Atualizar receita",
+        "description": "Atualiza uma receita existente. Requer API Key (admin).",
+        "operationId": "updateRecipe",
+        "security": [{ "ApiKeyAuth": [] }],
+        "parameters": [
+          { "name": "slug", "in": "path", "required": true, "schema": { "type": "string" }, "description": "Slug da receita" }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "title": { "type": "string" },
+                  "cooklangContent": { "type": "string" },
+                  "description": { "type": "string", "nullable": true },
+                  "servings": { "type": "integer", "nullable": true },
+                  "prepTime": { "type": "integer", "nullable": true },
+                  "cookTime": { "type": "integer", "nullable": true },
+                  "totalTime": { "type": "integer", "nullable": true },
+                  "source": { "type": "string", "nullable": true },
+                  "visibility": { "type": "string", "enum": ["PUBLIC", "HIDDEN"] },
+                  "tags": { "type": "array", "items": { "type": "string" } }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Receita atualizada", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Recipe" } } } },
+          "403": { "description": "Não autorizado" },
+          "404": { "description": "Receita não encontrada" }
+        }
+      },
+      "delete": {
+        "summary": "Deletar receita",
+        "description": "Remove uma receita. Requer API Key (admin).",
+        "operationId": "deleteRecipe",
+        "security": [{ "ApiKeyAuth": [] }],
+        "parameters": [
+          { "name": "slug", "in": "path", "required": true, "schema": { "type": "string" }, "description": "Slug da receita" }
+        ],
+        "responses": {
+          "200": { "description": "Receita deletada" },
+          "403": { "description": "Não autorizado" }
+        }
+      }
+    },
+    "/api/tags": {
+      "get": {
+        "summary": "Listar tags",
+        "description": "Lista todas as tags disponíveis com contagem de receitas.",
+        "operationId": "listTags",
+        "responses": {
+          "200": {
+            "description": "Lista de tags",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": { "type": "string" },
+                      "name": { "type": "string" },
+                      "slug": { "type": "string" },
+                      "_count": {
+                        "type": "object",
+                        "properties": {
+                          "recipes": { "type": "integer" }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Criar tag",
+        "description": "Cria uma nova tag. Requer API Key (admin).",
+        "operationId": "createTag",
+        "security": [{ "ApiKeyAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["name"],
+                "properties": {
+                  "name": { "type": "string", "description": "Nome da tag" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "Tag criada" },
+          "400": { "description": "Dados inválidos" }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "ApiKeyAuth": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "X-API-Key",
+        "description": "Chave de API para operações administrativas. Passe no header X-API-Key ou Authorization: Bearer <key>"
+      }
+    },
+    "schemas": {
+      "Recipe": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "title": { "type": "string" },
+          "slug": { "type": "string" },
+          "cooklangContent": { "type": "string" },
+          "description": { "type": "string", "nullable": true },
+          "servings": { "type": "integer", "nullable": true },
+          "prepTime": { "type": "integer", "nullable": true },
+          "cookTime": { "type": "integer", "nullable": true },
+          "totalTime": { "type": "integer", "nullable": true },
+          "source": { "type": "string", "nullable": true },
+          "image": { "type": "string", "nullable": true },
+          "visibility": { "type": "string", "enum": ["PUBLIC", "HIDDEN"] },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "tag": {
+                  "type": "object",
+                  "properties": {
+                    "id": { "type": "string" },
+                    "name": { "type": "string" },
+                    "slug": { "type": "string" }
+                  }
+                }
+              }
+            }
+          },
+          "author": {
+            "type": "object",
+            "nullable": true,
+            "properties": {
+              "id": { "type": "string" },
+              "name": { "type": "string", "nullable": true },
+              "image": { "type": "string", "nullable": true }
+            }
+          }
+        }
+      }
+    }
+  }
+}
