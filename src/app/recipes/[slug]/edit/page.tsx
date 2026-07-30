@@ -8,12 +8,14 @@ import { Spin } from "antd";
 import Layout from "~/components/Layout";
 import RecipeForm from "~/components/RecipeForm";
 import { api } from "~/trpc/react";
+import { useTranslation } from "~/i18n";
 
 export default function EditRecipe({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = use(params);
   const router = useRouter();
   const { data: session } = useSession();
   const isAdmin = session?.user?.role === "ADMIN";
+  const { t } = useTranslation();
 
   const { data: recipe, isLoading } = api.recipe.bySlug.useQuery(
     { slug },
@@ -33,7 +35,7 @@ export default function EditRecipe({ params }: { params: Promise<{ slug: string 
           <title>Sign in - Recipe Book</title>
         </Head>
         <div style={{ textAlign: "center", padding: 60 }}>
-          Please sign in to edit recipes.
+          {t("Please sign in to edit recipes.")}
         </div>
       </Layout>
     );

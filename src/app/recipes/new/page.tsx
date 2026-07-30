@@ -6,11 +6,13 @@ import { useEffect } from "react";
 import Head from "next/head";
 import Layout from "~/components/Layout";
 import RecipeForm from "~/components/RecipeForm";
+import { useTranslation } from "~/i18n";
 
 export default function NewRecipe() {
   const { data: session } = useSession();
   const router = useRouter();
   const isAdmin = session?.user?.role === "ADMIN";
+  const { t } = useTranslation();
 
   useEffect(() => {
     if (session && !isAdmin) {
@@ -25,7 +27,7 @@ export default function NewRecipe() {
           <title>Sign in - Recipe Book</title>
         </Head>
         <div style={{ textAlign: "center", padding: 60 }}>
-          Please sign in to create recipes.
+          {t("Please sign in to create recipes.")}
         </div>
       </Layout>
     );

@@ -8,6 +8,7 @@ import { useState } from "react";
 import Layout from "~/components/Layout";
 import RecipeCard from "~/components/RecipeCard";
 import { api } from "~/trpc/react";
+import { useTranslation } from "~/i18n";
 
 const { Title } = Typography;
 
@@ -15,6 +16,7 @@ export default function Home() {
   const { data: session } = useSession();
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const { t } = useTranslation();
 
   const { data: tagsData } = api.tag.list.useQuery();
   const { data: recipesData, isLoading } = api.recipe.list.useQuery({
@@ -38,11 +40,11 @@ export default function Home() {
 
       <div style={{ marginBottom: 24 }}>
         <Title level={2} style={{ marginTop: 0 }}>
-          {session ? "My Recipes" : "Recipe Book"}
+          {session ? t("My Recipes") : t("Recipe book")}
         </Title>
 
         <Input
-          placeholder="Search recipes by name, ingredient, or keyword..."
+          placeholder={t("Search recipes by name, ingredient, or keyword...")}
           prefix={<SearchOutlined />}
           size="large"
           value={searchQuery}
@@ -83,7 +85,7 @@ export default function Home() {
         </Row>
       ) : (
         <Empty
-          description="No recipes found"
+          description={t("No recipes found")}
           style={{ padding: 60 }}
         />
       )}

@@ -15,6 +15,7 @@ import { useRouter } from "next/navigation";
 import Layout from "~/components/Layout";
 import RecipeViewer from "~/components/RecipeViewer";
 import { api } from "~/trpc/react";
+import { useTranslation } from "~/i18n";
 
 const { Title } = Typography;
 
@@ -23,6 +24,7 @@ export default function RecipeDetail({ params }: { params: Promise<{ slug: strin
   const router = useRouter();
   const { data: session } = useSession();
   const isAdmin = session?.user?.role === "ADMIN";
+  const { t } = useTranslation();
 
   const { data: recipe, isLoading, error } = api.recipe.bySlug.useQuery(
     { slug },
@@ -32,7 +34,7 @@ export default function RecipeDetail({ params }: { params: Promise<{ slug: strin
   const utils = api.useUtils();
   const deleteRecipe = api.recipe.delete.useMutation({
     onSuccess: () => {
-      message.success("Recipe deleted");
+      message.success(t("Recipe deleted"));
       utils.recipe.list.invalidate();
       router.push("/");
     },
@@ -42,9 +44,9 @@ export default function RecipeDetail({ params }: { params: Promise<{ slug: strin
   const handleDelete = useCallback(() => {
     if (!recipe) return;
     Modal.confirm({
-      title: "Delete recipe?",
-      content: `Are you sure you want to delete "${recipe.title}"?`,
-      okText: "Delete",
+      title: t("Delete recipe?"),
+      content: `${t("Are you sure you want to delete")} "${recipe.title}"?`,
+      okText: t("Delete"),
       okType: "danger",
       onOk: () => deleteRecipe.mutate({ id: recipe.id }),
     });
@@ -61,7 +63,7 @@ export default function RecipeDetail({ params }: { params: Promise<{ slug: strin
       a.click();
       URL.revokeObjectURL(url);
     } catch {
-      message.error("Failed to export");
+      message.error(t("Failed to export"));
     }
   }, [recipe]);
 
@@ -79,8 +81,8 @@ export default function RecipeDetail({ params }: { params: Promise<{ slug: strin
     return (
       <Layout>
         <div style={{ textAlign: "center", padding: 60 }}>
-          <Title level={3}>Recipe not found</Title>
-          <Link href="/">Back to recipes</Link>
+          <Title level={3}>{t("Recipe not found")}</Title>
+          <Link href="/">{t("Back to recipes")}</Link>
         </div>
       </Layout>
     );
@@ -94,7 +96,7 @@ export default function RecipeDetail({ params }: { params: Promise<{ slug: strin
 
       <Space style={{ marginBottom: 16 }}>
         <Link href="/">
-          <Button icon={<ArrowLeftOutlined />}>Back</Button>
+          <Button icon={<ArrowLeftOutlined />}>{t("Back")}</Button>
         </Link>
       </Space>
 
@@ -121,7 +123,7 @@ export default function RecipeDetail({ params }: { params: Promise<{ slug: strin
           )}
           {recipe.visibility === "HIDDEN" && (
             <Tag color="orange" style={{ marginTop: 8 }}>
-              Hidden
+              {t("Hidden")}
             </Tag>
           )}
         </div>
@@ -129,13 +131,13 @@ export default function RecipeDetail({ params }: { params: Promise<{ slug: strin
         {isAdmin && (
           <Space>
             <Button icon={<DownloadOutlined />} onClick={handleExport}>
-              Export .cook
+              {t("Export .cook")}
             </Button>
             <Link href={`/recipes/${recipe.slug}/edit`}>
-              <Button icon={<EditOutlined />}>Edit</Button>
+              <Button icon={<EditOutlined />}>{t("Edit")}</Button>
             </Link>
             <Button danger icon={<DeleteOutlined />} onClick={handleDelete}>
-              Delete
+              {t("Delete")}
             </Button>
           </Space>
         )}
