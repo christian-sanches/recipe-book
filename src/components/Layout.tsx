@@ -1,4 +1,3 @@
-import { useState } from "react";
 import {
   Layout as AntLayout,
   Button,
@@ -17,12 +16,14 @@ import {
   MenuOutlined,
   SunOutlined,
   MoonOutlined,
+  GlobalOutlined,
 } from "@ant-design/icons";
 import { useSession, signOut } from "next-auth/react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { MenuProps } from "antd";
 import { useTheme } from "~/contexts/ThemeContext";
+import { useTranslation } from "~/i18n";
 
 const { Header, Content, Footer } = AntLayout;
 const { Text } = Typography;
@@ -34,6 +35,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   const screens = useBreakpoint();
   const isDesktop = screens.md;
   const { theme, toggleTheme } = useTheme();
+  const { t, lang, setLang } = useTranslation();
 
   const userMenuItems: MenuProps["items"] = [
     {
@@ -49,10 +51,15 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     {
       key: "logout",
       icon: <LogoutOutlined />,
-      label: "Sign out",
+      label: t("Sign out"),
       onClick: () => signOut(),
     },
   ];
+
+  const langLabel =
+    lang === "en"
+      ? "🇧🇷 Português"
+      : "🇺🇸 English";
 
   const menuItems: MenuProps["items"] = [
     // ── Auth section ──
@@ -82,7 +89,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                 {
                   key: "new-recipe",
                   icon: <PlusOutlined />,
-                  label: "New Recipe",
+                  label: t("New Recipe"),
                   onClick: () => router.push("/recipes/new"),
                 } as NonNullable<MenuProps["items"]>[number],
               ]
@@ -92,7 +99,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                 {
                   key: "logout",
                   icon: <LogoutOutlined />,
-                  label: "Sign out",
+                  label: t("Sign out"),
                   onClick: () => signOut(),
                   danger: true,
                 } as NonNullable<MenuProps["items"]>[number],
@@ -101,7 +108,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                 {
                   key: "signin",
                   icon: <LoginOutlined />,
-                  label: "Sign in",
+                  label: t("Sign in"),
                   onClick: () => router.push("/login"),
                 } as NonNullable<MenuProps["items"]>[number],
               ]),
@@ -112,8 +119,18 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     {
       key: "theme",
       icon: theme === "dark" ? <SunOutlined /> : <MoonOutlined />,
-      label: theme === "dark" ? "Light mode" : "Dark mode",
+      label: theme === "dark" ? t("Light mode") : t("Dark mode"),
       onClick: toggleTheme,
+    },
+    {
+      key: "language",
+      icon: <GlobalOutlined />,
+      label: (
+        <Space>
+          <span>{langLabel}</span>
+        </Space>
+      ),
+      onClick: () => setLang(lang === "en" ? "pt-BR" : "en"),
     },
   ];
 
@@ -136,7 +153,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           <Space>
             <BookOutlined style={{ fontSize: 24, color: "#1677ff" }} />
             <Text strong style={{ fontSize: 18 }}>
-              Recipe Book
+              {t("Recipe book")}
             </Text>
           </Space>
         </Link>
@@ -149,7 +166,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               icon={<PlusOutlined />}
               onClick={() => router.push("/recipes/new")}
             >
-              New Recipe
+              {t("New Recipe")}
             </Button>
           )}
           {isDesktop && session?.user && (
@@ -168,7 +185,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               icon={<LoginOutlined />}
               onClick={() => router.push("/login")}
             >
-              Sign in
+              {t("Sign in")}
             </Button>
           )}
 
@@ -206,7 +223,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       </Content>
 
       <Footer style={{ textAlign: "center", color: "#999" }}>
-        Recipe Book &copy; {new Date().getFullYear()} &mdash; Powered by Cooklang
+        {t("Recipe book")} &copy; {new Date().getFullYear()} &mdash; Powered by Cooklang
       </Footer>
     </AntLayout>
   );
