@@ -8,18 +8,55 @@ import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/
 import { auth } from "~/server/auth";
 import { db } from "~/server/db";
 import { tools, type Session } from "~/mcp/tools";
+import { env } from "~/env";
+
+// ── Auth helpers ────────────────────────────────────────────────
+function resolveSession(req: NextRequest): Promise<Session> {
+  // 1. Try API key (for AI clients like Cursor, Claude Code, etc.)
+  const apiKey =
+    req.headers.get("authorization")?.replace(/^Bearer\s+/i, "") ??
+    req.headers.get("x-api-key");
+
+  if (apiKey && env.MCP_API_KEY && apiKey === env.MCP_API_KEY) {
+    return Promise.resolve({
+      user: {
+        id: "mcp-admin",
+        role: "ADMIN",
+        email: null,
+      },
+    });
+  }
+
+  // 2. Fall back to browser session cookie (for web UI)
+  return auth().then((authSession) => ({
+    user: authSession?.user
+      ? {
+          id: authSession.user.id,
+          role: authSession.user.role,
+          email: authSession.user.email ?? null,
+        }
+      : null,
+  }));
+}
 
 // ── Helpers ────────────────────────────────────────────────────
 function createServer(session: Session) {
+  // Filter tools based on auth — only show admin tools when user is admin
+  const visibleTools = tools.filter(
+    (t) => !t.requiresAdmin || (session.user?.role === "ADMIN"),
+  );
+
   const server = new Server(
     { name: "Recipe Book MCP", version: "1.0.0" },
     { capabilities: { tools: {} } },
   );
 
   server.setRequestHandler(ListToolsRequestSchema, async () => ({
-    tools: tools.map((t) => ({
+    tools: visibleTools.map((t) => ({
       name: t.name,
-      description: t.description,
+      description: session.user?.role !== "ADMIN" && t.requiresAdmin
+        ? `${t.description} (requires admin — not available without API key)`
+        : t.description,
       inputSchema: t.inputSchema,
     })),
   }));
@@ -30,6 +67,17 @@ function createServer(session: Session) {
       return {
         isError: true,
         content: [{ type: "text" as const, text: `Unknown tool: ${request.params.name}` }],
+      };
+    }
+
+    // Enforce admin check
+    if (tool.requiresAdmin && session.user?.role !== "ADMIN") {
+      return {
+        isError: true,
+        content: [{
+          type: "text" as const,
+          text: "Forbidden: admin privileges required. Set an MCP_API_KEY in your .env.local and pass it via Authorization: Bearer <key> header.",
+        }],
       };
     }
 
@@ -55,23 +103,12 @@ function createServer(session: Session) {
 
 // ── Handler ─────────────────────────────────────────────────────
 async function handleMCPRequest(req: NextRequest): Promise<Response> {
-  const authSession = await auth();
-
   const transport = new WebStandardStreamableHTTPServerTransport({
     sessionIdGenerator: undefined, // stateless
     enableJsonResponse: true,      // JSON in, JSON out
   });
 
-  const session: Session = {
-    user: authSession?.user
-      ? {
-          id: authSession.user.id,
-          role: authSession.user.role,
-          email: authSession.user.email ?? null,
-        }
-      : null,
-  };
-
+  const session = await resolveSession(req);
   const server = createServer(session);
   await server.connect(transport);
 

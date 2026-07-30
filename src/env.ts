@@ -9,6 +9,7 @@ const envSchema = z.object({
   AUTH_GOOGLE_ID: z.string().optional(),
   AUTH_GOOGLE_SECRET: z.string().optional(),
   ADMIN_EMAILS: z.string().default(""),
+  MCP_API_KEY: z.string().optional(),
 });
 
 const skipValidation = process.env.SKIP_ENV_VALIDATION === "true";

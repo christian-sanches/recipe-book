@@ -11,6 +11,7 @@ export interface ToolDef {
   name: string;
   description: string;
   inputSchema: Record<string, unknown>;
+  requiresAdmin: boolean;
   handler: (args: Record<string, unknown>, db: PrismaClient, session: Session) => Promise<unknown>;
 }
 
@@ -28,6 +29,7 @@ export const tools: ToolDef[] = [
         offset: { type: "number", default: 0, description: "Pagination offset" },
       },
     },
+    requiresAdmin: false,
     async handler(args, db, session) {
       const where: Record<string, unknown> = {};
 
@@ -81,6 +83,7 @@ export const tools: ToolDef[] = [
       },
       required: ["slug"],
     },
+    requiresAdmin: false,
     async handler(args, db, session) {
       const recipe = await db.recipe.findUnique({
         where: { slug: args.slug as string },
@@ -115,6 +118,7 @@ export const tools: ToolDef[] = [
       },
       required: ["title", "cooklangContent"],
     },
+    requiresAdmin: true,
     async handler(args, db, session) {
       if (session.user?.role !== "ADMIN") {
         throw new Error("Forbidden: admin privileges required");
@@ -170,6 +174,7 @@ export const tools: ToolDef[] = [
       },
       required: ["slug"],
     },
+    requiresAdmin: true,
     async handler(args, db, session) {
       if (session.user?.role !== "ADMIN") {
         throw new Error("Forbidden: admin privileges required");
@@ -220,6 +225,7 @@ export const tools: ToolDef[] = [
       },
       required: ["slug"],
     },
+    requiresAdmin: true,
     async handler(args, db, session) {
       if (session.user?.role !== "ADMIN") {
         throw new Error("Forbidden: admin privileges required");
@@ -238,6 +244,7 @@ export const tools: ToolDef[] = [
       type: "object",
       properties: {},
     },
+    requiresAdmin: false,
     async handler(_args, db, _session) {
       const tags = await db.tag.findMany({
         include: { _count: { select: { recipes: true } } },
