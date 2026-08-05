@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import {
   Form,
   Input,
@@ -11,10 +11,11 @@ import {
   Divider,
   message,
 } from "antd";
-import { SaveOutlined, EyeOutlined } from "@ant-design/icons";
+import { SaveOutlined, EyeOutlined, UploadOutlined } from "@ant-design/icons";
 import { useRouter } from "next/navigation";
 import { api } from "~/trpc/react";
 import RecipeViewer from "./RecipeViewer";
+import { parseCookFile } from "~/lib/cooklang";
 import { useTranslation } from "~/i18n";
 
 const { Title } = Typography;
@@ -45,6 +46,7 @@ export default function RecipeForm({ initialData, isEditing }: RecipeFormProps) 
   const [cooklangContent, setCooklangContent] = useState(
     initialData?.cooklangContent ?? ""
   );
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const { t } = useTranslation();
 
   const { data: allTags } = api.tag.list.useQuery();
@@ -117,6 +119,42 @@ export default function RecipeForm({ initialData, isEditing }: RecipeFormProps) 
     return resolved;
   }
 
+  // ── Import .cook ──────────────────────────────────────────
+  // Reads a .cook file and fills the form fields so the user can
+  // review and edit before saving. It never saves automatically.
+  const handleImport = async (file: File) => {
+    try {
+      const parsed = parseCookFile(await file.text());
+
+      if (!parsed.title && !parsed.cooklangContent.trim()) {
+        message.warning(t("No recipe data found in file"));
+        return;
+      }
+
+      // Resolve tag names to existing tag IDs when possible; unknown
+      // names stay as raw strings and are created on save.
+      const tagValues = parsed.tags.map((name) => {
+        const existingId = tagNameToId.get(name.toLowerCase());
+        return existingId ?? name;
+      });
+
+      form.setFieldsValue({
+        title: parsed.title ?? "",
+        description: parsed.description ?? "",
+        servings: parsed.servings ?? undefined,
+        prepTime: parsed.prepTime ?? undefined,
+        cookTime: parsed.cookTime ?? undefined,
+        totalTime: parsed.totalTime ?? undefined,
+        source: parsed.source ?? "",
+        tags: tagValues,
+      });
+      setCooklangContent(parsed.cooklangContent);
+      message.success(t("Imported recipe from file — review before saving"));
+    } catch {
+      message.error(t("Failed to import file"));
+    }
+  };
+
   const handleSubmit = async (values: Record<string, unknown>) => {
     let tagIds: string[] | undefined;
 
@@ -140,7 +178,36 @@ export default function RecipeForm({ initialData, isEditing }: RecipeFormProps) 
 
   return (
     <div style={{ maxWidth: 900, margin: "0 auto" }}>
-      <Title level={2}>{isEditing ? t("Edit Recipe") : t("New Recipe")}</Title>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          marginBottom: 8,
+        }}
+      >
+        <Title level={2} style={{ margin: 0 }}>
+          {isEditing ? t("Edit Recipe") : t("New Recipe")}
+        </Title>
+        {!preview && (
+          <>
+            <input
+              type="file"
+              accept=".cook,.txt"
+              ref={fileInputRef}
+              style={{ display: "none" }}
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) handleImport(file);
+                e.target.value = "";
+              }}
+            />
+            <Button icon={<UploadOutlined />} onClick={() => fileInputRef.current?.click()}>
+              {t("Import .cook")}
+            </Button>
+          </>
+        )}
+      </div>
 
       {preview ? (
         <div>
