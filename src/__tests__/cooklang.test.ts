@@ -4,6 +4,9 @@ import {
   parseCookFile,
   parseDurationToMinutes,
   stripMetadata,
+  splitRecipeBlocks,
+  cleanRecipeContent,
+  noteBlockToText,
 } from "~/lib/cooklang";
 
 describe("parseDurationToMinutes", () => {
@@ -213,5 +216,65 @@ describe("round-trip", () => {
     expect(parsed.image).toBe(original.image);
     expect(parsed.tags).toEqual(original.tags);
     expect(parsed.cooklangContent).toBe(original.cooklangContent);
+  });
+});
+
+describe("splitRecipeBlocks", () => {
+  it("separates note lines from step text", () => {
+    const blocks = splitRecipeBlocks(
+      "Reservar as @Carnes\n> um teste de comentário\n>teste\n\n> Segundo teste\n> De comentário"
+    );
+
+    expect(blocks).toEqual([
+      { type: "cooklang", lines: ["Reservar as @Carnes"] },
+      { type: "note", lines: ["> um teste de comentário", ">teste"] },
+      { type: "note", lines: ["> Segundo teste", "> De comentário"] },
+    ]);
+  });
+
+  it("keeps multi-line step paragraphs intact", () => {
+    const blocks = splitRecipeBlocks("Step one\nStep two\n\nStep three");
+    expect(blocks).toEqual([
+      { type: "cooklang", lines: ["Step one", "Step two"] },
+      { type: "cooklang", lines: ["Step three"] },
+    ]);
+  });
+
+  it("ignores blank lines", () => {
+    const blocks = splitRecipeBlocks("\n\n> note\n\n");
+    expect(blocks).toEqual([{ type: "note", lines: ["> note"] }]);
+  });
+});
+
+describe("cleanRecipeContent", () => {
+  it("removes note lines from the content", () => {
+    const clean = cleanRecipeContent("Step\n> note\n\n> outra\n\nFim");
+    expect(clean).toBe("Step\n\n\nFim");
+  });
+
+  it("removes trailing note lines without leaving stray paragraphs", () => {
+    const clean = cleanRecipeContent("Step\n> note");
+    expect(clean).toBe("Step");
+  });
+
+  it("splits a paragraph interrupted by a mid-paragraph note", () => {
+    const clean = cleanRecipeContent("Antes\n> note\nDepois");
+    expect(clean).toBe("Antes\n\nDepois");
+  });
+});
+
+describe("noteBlockToText", () => {
+  it("strips the > marker and optional space", () => {
+    expect(noteBlockToText(["> um teste de comentário", ">teste"])).toBe(
+      "um teste de comentário teste"
+    );
+  });
+
+  it("trims indented note markers", () => {
+    expect(noteBlockToText(["  > nota indentada"])).toBe("nota indentada");
+  });
+
+  it("handles commas and other characters in note text", () => {
+    expect(noteBlockToText(["> Com,ment"])).toBe("Com,ment");
   });
 });

@@ -1,20 +1,20 @@
 import { Card, Tag, Typography, Descriptions, Space } from "antd";
 import { ClockCircleOutlined, FireOutlined } from "@ant-design/icons";
 import { useMemo } from "react";
-import { CooklangParser, HTMLRenderer } from "@cooklang/cooklang";
+import {
+  CooklangParser,
+  quantity_display,
+  ingredient_display_name,
+  cookware_display_name,
+} from "@cooklang/cooklang";
 import { useTranslation } from "~/i18n";
+import {
+  splitRecipeBlocks,
+  cleanRecipeContent,
+  noteBlockToText,
+} from "~/lib/cooklang";
 
 const { Title, Text, Paragraph } = Typography;
-
-function renderSectionsOnly(recipe: any): string {
-  const renderer = new HTMLRenderer();
-  const full = renderer.render(recipe);
-  const hrIndex = full.lastIndexOf("<hr>");
-  if (hrIndex !== -1) {
-    return full.slice(hrIndex + 4);
-  }
-  return full;
-}
 
 // ── Ingredient aggregation ─────────────────────────────────────
 interface AggregatedIngredient {
@@ -65,6 +65,63 @@ function formatQty(qty: number | null, unit: string | null, t: (key: string) => 
   return unit ? `${formatted} ${unit}` : formatted;
 }
 
+// ── Step/note/section rendering ───────────────────────────────
+type RenderItem =
+  | { kind: "section"; name: string; index: number }
+  | { kind: "step"; step: any }
+  | { kind: "note"; text: string }
+  | { kind: "text"; value: string };
+
+interface RenderedRecipe {
+  recipe: any;
+  renderList: RenderItem[];
+}
+
+function buildRenderedRecipe(cooklangContent: string): RenderedRecipe {
+  const blocks = splitRecipeBlocks(cooklangContent);
+  const clean = cleanRecipeContent(cooklangContent);
+
+  const parser = new CooklangParser();
+  const [recipe] = parser.parse(clean);
+  const sections = recipe.sections ?? [];
+
+  const parseUnits: RenderItem[] = [];
+  for (let sIdx = 0; sIdx < sections.length; sIdx++) {
+    const section = sections[sIdx];
+    if (section.name) {
+      parseUnits.push({ kind: "section", name: section.name, index: sIdx + 1 });
+    }
+    for (const content of section.content ?? []) {
+      if (content.type === "step") parseUnits.push({ kind: "step", step: content.value });
+      else if (content.type === "text") parseUnits.push({ kind: "text", value: content.value });
+    }
+  }
+
+  const renderList: RenderItem[] = [];
+  // The HTML renderer shows an implicit header for an unnamed first
+  // section when the recipe has more than one section.
+  if (sections.length > 1 && !sections[0].name) {
+    renderList.push({ kind: "section", name: "Section 1", index: 1 });
+  }
+
+  let unitIdx = 0;
+  for (const block of blocks) {
+    if (block.type === "note") {
+      const text = noteBlockToText(block.lines);
+      if (text) renderList.push({ kind: "note", text });
+      continue;
+    }
+    const unit = parseUnits[unitIdx];
+    unitIdx++;
+    if (unit) renderList.push(unit);
+  }
+  for (; unitIdx < parseUnits.length; unitIdx++) {
+    renderList.push(parseUnits[unitIdx]!);
+  }
+
+  return { recipe, renderList };
+}
+
 // ── Component ──────────────────────────────────────────────────
 interface RecipeViewerProps {
   cooklangContent: string;
@@ -87,22 +144,20 @@ export default function RecipeViewer({
 }: RecipeViewerProps) {
   const rendered = useMemo(() => {
     try {
-      const parser = new CooklangParser();
-      const [recipe] = parser.parse(cooklangContent);
+      const { recipe, renderList } = buildRenderedRecipe(cooklangContent);
 
       const ingredients = aggregateIngredients(recipe.ingredients);
       const uniqueCookware = [
         ...new Set(recipe.cookware.map((c: any) => c.name)),
       ] as string[];
 
-      const stepsHtml = renderSectionsOnly(recipe);
-
-      return { html: stepsHtml, ingredients, cookware: uniqueCookware };
+      return { recipe, renderList, ingredients, cookware: uniqueCookware };
     } catch {
       return {
-        html: `<p>${cooklangContent}</p>`,
+        recipe: null,
+        renderList: [{ kind: "text", value: cooklangContent }] as RenderItem[],
         ingredients: [] as AggregatedIngredient[],
-        cookware: [],
+        cookware: [] as string[],
       };
     }
   }, [cooklangContent]);
@@ -195,13 +250,91 @@ export default function RecipeViewer({
         </>
       )}
 
-      {rendered.html && (
+      {rendered.renderList.length > 0 && (
         <>
           <Title level={3}>{t("Instructions")}</Title>
-          <div
-            className="cooklang-steps"
-            dangerouslySetInnerHTML={{ __html: rendered.html }}
-          />
+          <div className="cooklang-steps">
+            {rendered.renderList.map((item, i) => {
+              if (item.kind === "section") {
+                return (
+                  <h3 key={i} className="cooklang-section">
+                    ({item.index}) {item.name}
+                  </h3>
+                );
+              }
+              if (item.kind === "note") {
+                return (
+                  <div key={i} className="cooklang-note">
+                    <span className="cooklang-note-label">{t("Note")}:</span>
+                    {item.text}
+                  </div>
+                );
+              }
+              if (item.kind === "step" && rendered.recipe) {
+                const step = item.step;
+                return (
+                  <p key={i} className="cooklang-step">
+                    <b>{step.number}. </b>
+                    {step.items.map((it: any, j: number) => {
+                      switch (it.type) {
+                        case "text":
+                          return it.value;
+                        case "ingredient": {
+                          const ing = rendered.recipe.ingredients[it.index];
+                          return (
+                            <span key={j} className="ingredient">
+                              {ingredient_display_name(ing)}
+                              {ing.quantity ? (
+                                <i>({quantity_display(ing.quantity)})</i>
+                              ) : null}
+                            </span>
+                          );
+                        }
+                        case "timer": {
+                          const tm = rendered.recipe.timers[it.index];
+                          return (
+                            <span key={j} className="timer">
+                              {tm.name ? `(${tm.name})` : ""}
+                              {tm.quantity ? (
+                                <i>{quantity_display(tm.quantity)}</i>
+                              ) : (
+                                ""
+                              )}
+                            </span>
+                          );
+                        }
+                        case "inlineQuantity": {
+                          const q = rendered.recipe.inlineQuantities[it.index];
+                          return (
+                            <i key={j} className="temp">
+                              ({quantity_display(q)})
+                            </i>
+                          );
+                        }
+                        case "cookware": {
+                          const cw = rendered.recipe.cookware[it.index];
+                          return (
+                            <span key={j} className="cookware">
+                              {cookware_display_name(cw)}
+                              {cw.quantity ? (
+                                <i>({quantity_display(cw.quantity)})</i>
+                              ) : null}
+                            </span>
+                          );
+                        }
+                        default:
+                          return null;
+                      }
+                    })}
+                  </p>
+                );
+              }
+              if (item.kind === "text") {
+                return <p key={i}>{item.value}</p>;
+              }
+              return <p key={i} />;
+            })}
+          </div>
         </>
       )}
     </div>

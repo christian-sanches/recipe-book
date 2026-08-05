@@ -31,6 +31,93 @@ export interface ParsedCookRecipe {
   cooklangContent: string;
 }
 
+// ── Note blocks ───────────────────────────────────────────────
+// Notes (`> text` lines) are handled here because the official parser
+// merges them into step text (or emits stray `>` chars) instead of
+// exposing them as a dedicated element.
+
+const NOTE_LINE = /^\s*>/;
+
+export type RecipeBlock =
+  | { type: "note"; lines: string[] }
+  | { type: "cooklang"; lines: string[] };
+
+// Split content into alternating cooklang/note blocks, preserving order.
+export function splitRecipeBlocks(content: string): RecipeBlock[] {
+  const lines = content.split(/\r?\n/);
+  const blocks: RecipeBlock[] = [];
+  let i = 0;
+
+  while (i < lines.length) {
+    const line = lines[i]!;
+    if (line.trim() === "") {
+      i++;
+      continue;
+    }
+
+    if (NOTE_LINE.test(line)) {
+      const noteLines: string[] = [];
+      while (i < lines.length && NOTE_LINE.test(lines[i]!)) {
+        noteLines.push(lines[i]!);
+        i++;
+      }
+      blocks.push({ type: "note", lines: noteLines });
+    } else {
+      const cookLines: string[] = [];
+      while (
+        i < lines.length &&
+        lines[i]!.trim() !== "" &&
+        !NOTE_LINE.test(lines[i]!)
+      ) {
+        cookLines.push(lines[i]!);
+        i++;
+      }
+      blocks.push({ type: "cooklang", lines: cookLines });
+    }
+  }
+
+  return blocks;
+}
+
+// Rebuild content without note lines so the parser produces only
+// steps/sections. A note run in the middle of a paragraph is replaced
+// with a blank line so the surrounding text stays separate steps.
+export function cleanRecipeContent(content: string): string {
+  const lines = content.split(/\r?\n/);
+  const out: string[] = [];
+  let i = 0;
+
+  while (i < lines.length) {
+    const line = lines[i]!;
+    if (line.trim() === "") {
+      out.push("");
+      i++;
+      continue;
+    }
+    if (NOTE_LINE.test(line)) {
+      let j = i;
+      while (j < lines.length && NOTE_LINE.test(lines[j]!)) j++;
+      const hasTextBefore = i > 0 && lines[i - 1]!.trim() !== "";
+      const hasTextAfter = j < lines.length && lines[j]!.trim() !== "";
+      if (hasTextBefore && hasTextAfter) out.push("");
+      i = j;
+    } else {
+      out.push(line);
+      i++;
+    }
+  }
+
+  return out.join("\n");
+}
+
+// Join a note block's lines into display text (strips the `>` marker).
+export function noteBlockToText(lines: string[]): string {
+  return lines
+    .map((l) => l.replace(/^\s*>/, "").replace(/^\s+/, ""))
+    .join(" ")
+    .trim();
+}
+
 const METADATA_LINE = /^>>\s+([^:]+):\s*(.*)$/;
 
 // Remove the metadata block (YAML frontmatter or leading `>>` lines)

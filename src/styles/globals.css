@@ -65,18 +65,40 @@ html.dark .cooklang-steps .timer {
   color: #ffc53d;
 }
 
-/* Note styling - cooklang uses > for notes */
-.cooklang-steps .note {
-  font-style: italic;
-  opacity: 0.8;
-  padding: 8px 12px;
-  border-left: 3px solid #1677ff;
-  margin: 8px 0;
-  background: rgba(22, 119, 255, 0.04);
-  border-radius: 0 4px 4px 0;
+/* Section headers inside instructions */
+.cooklang-steps .cooklang-section {
+  margin: 20px 0 8px;
+  font-size: 1.15em;
 }
 
-html.dark .cooklang-steps .note {
+/* Note cards — cooklang uses > for notes, shown as blue blocks */
+.cooklang-steps .cooklang-note {
+  background: rgba(22, 119, 255, 0.06);
+  border: 1px solid rgba(22, 119, 255, 0.3);
+  border-left: 4px solid #1677ff;
+  border-radius: 8px;
+  padding: 10px 14px;
+  margin: 12px 0;
+  color: inherit;
+  line-height: 1.6;
+}
+
+.cooklang-steps .cooklang-note-label {
+  display: inline-block;
+  margin-right: 8px;
+  color: #1677ff;
+  font-weight: 600;
+  font-size: 0.78em;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+html.dark .cooklang-steps .cooklang-note {
+  background: rgba(22, 119, 255, 0.12);
+  border-color: rgba(64, 150, 255, 0.4);
   border-left-color: #4096ff;
-  background: rgba(64, 150, 255, 0.08);
+}
+
+html.dark .cooklang-steps .cooklang-note-label {
+  color: #69b1ff;
 }
