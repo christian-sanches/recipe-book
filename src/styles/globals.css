@@ -71,31 +71,34 @@ html.dark .cooklang-steps .timer {
   font-size: 1.15em;
 }
 
-/* Note cards — cooklang uses > for notes, shown as blue blocks */
+/* Note cards — cooklang uses > for notes, shown as full-width blue blocks */
 .cooklang-steps .cooklang-note {
-  background: rgba(22, 119, 255, 0.06);
-  border: 1px solid rgba(22, 119, 255, 0.3);
-  border-left: 4px solid #1677ff;
-  border-radius: 8px;
-  padding: 10px 14px;
-  margin: 12px 0;
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  background: rgba(22, 119, 255, 0.08);
+  border: 1px solid rgba(22, 119, 255, 0.45);
+  border-left: 5px solid #1677ff;
+  border-radius: 10px;
+  padding: 14px 18px;
+  margin: 16px 0;
   color: inherit;
   line-height: 1.6;
 }
 
 .cooklang-steps .cooklang-note-label {
-  display: inline-block;
-  margin-right: 8px;
+  display: block;
+  margin-bottom: 6px;
   color: #1677ff;
-  font-weight: 600;
-  font-size: 0.78em;
-  letter-spacing: 0.06em;
+  font-weight: 700;
+  font-size: 0.8em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
 }
 
 html.dark .cooklang-steps .cooklang-note {
-  background: rgba(22, 119, 255, 0.12);
-  border-color: rgba(64, 150, 255, 0.4);
+  background: rgba(22, 119, 255, 0.14);
+  border-color: rgba(64, 150, 255, 0.5);
   border-left-color: #4096ff;
 }
 
