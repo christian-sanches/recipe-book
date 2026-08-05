@@ -222,6 +222,8 @@
           "source": { "type": ["string", "null"] },
           "image": { "type": ["string", "null"] },
           "visibility": { "type": "string", "enum": ["PUBLIC", "HIDDEN"] },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "updatedAt": { "type": "string", "format": "date-time" },
           "tags": {
             "type": "array",
             "items": {
@@ -263,6 +265,9 @@
           "source": { "type": ["string", "null"] },
           "image": { "type": ["string", "null"] },
           "visibility": { "type": "string", "enum": ["PUBLIC", "HIDDEN"] },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "updatedAt": { "type": "string", "format": "date-time" },
+          "authorId": { "type": "string" },
           "tags": {
             "type": "array",
             "items": {
