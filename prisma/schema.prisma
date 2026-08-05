@@ -107,3 +107,54 @@ model RecipeTag {
 
   @@id([recipeId, tagId])
 }
+
+// ── OAuth 2.0 (MCP server authorization) ────────────────────────
+// Supports dynamic client registration (RFC 7591), authorization
+// code + PKCE (RFC 7636) and refresh token rotation, so clients like
+// ChatGPT can authorize instead of using a static API key.
+
+model OAuthClient {
+  clientId      String   @id
+  redirectUris  String[]
+  grantTypes    String[]
+  responseTypes String[]
+  clientName    String?
+  clientUri     String?
+  scope         String?
+  createdAt     DateTime @default(now())
+}
+
+model OAuthAuthorizationCode {
+  code          String   @id
+  clientId      String
+  codeChallenge String
+  redirectUri   String
+  scopes        String[]
+  userId        String
+  expiresAt     DateTime
+  createdAt     DateTime @default(now())
+}
+
+model OAuthAccessToken {
+  token     String    @id
+  clientId  String
+  scopes    String[]
+  userId    String
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([clientId])
+}
+
+model OAuthRefreshToken {
+  token     String    @id
+  clientId  String
+  scopes    String[]
+  userId    String
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([clientId])
+}

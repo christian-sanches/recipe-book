@@ -10,26 +10,42 @@ import { db } from "~/server/db";
 import { tools, type Session } from "~/mcp/tools";
 import { env } from "~/env";
 import { ensureUtf8 } from "../helpers";
+import { verifyAccessToken } from "~/lib/mcp-oauth";
 
 // ── Auth helpers ────────────────────────────────────────────────
-function resolveSession(req: NextRequest): Promise<Session> {
-  // 1. Try API key (for AI clients like Cursor, Claude Code, etc.)
+async function resolveSession(req: NextRequest): Promise<Session | "unauthorized"> {
+  // Extract bearer token from Authorization or X-API-Key header
   const apiKey =
     req.headers.get("authorization")?.replace(/^Bearer\s+/i, "") ??
     req.headers.get("x-api-key");
 
-  if (apiKey && env.MCP_API_KEY && apiKey === env.MCP_API_KEY) {
-    return Promise.resolve({
-      user: {
-        id: "mcp-admin",
-        role: "ADMIN",
-        email: null,
-      },
-    });
+  // If a credential header is present it MUST be valid, otherwise 401
+  // (RFC 6750) so OAuth clients like ChatGPT know to re-authorize.
+  if (apiKey) {
+    // 1. Static API key (Cursor, Claude Code, curl, etc.)
+    if (env.MCP_API_KEY && apiKey === env.MCP_API_KEY) {
+      return {
+        user: { id: "mcp-admin", role: "ADMIN", email: null },
+      };
+    }
+
+    // 2. OAuth access token (ChatGPT dynamic client)
+    const info = await verifyAccessToken(apiKey);
+    if (info) {
+      const user = await db.user.findUnique({ where: { id: info.userId } });
+      if (user) {
+        return {
+          user: { id: user.id, role: user.role, email: user.email ?? null },
+        };
+      }
+    }
+
+    return "unauthorized";
   }
 
-  // 2. Fall back to browser session cookie (for web UI)
-  return auth().then((authSession) => ({
+  // 3. No credential header → browser session cookie (web UI)
+  const authSession = await auth();
+  return {
     user: authSession?.user
       ? {
           id: authSession.user.id,
@@ -37,7 +53,17 @@ function resolveSession(req: NextRequest): Promise<Session> {
           email: authSession.user.email ?? null,
         }
       : null,
-  }));
+  };
+}
+
+function unauthorizedResponse(): Response {
+  return new Response(JSON.stringify({ error: "unauthorized" }), {
+    status: 401,
+    headers: {
+      "Content-Type": "application/json; charset=utf-8",
+      "WWW-Authenticate": 'Bearer realm="recipes.endless-point.org", error="invalid_token"',
+    },
+  });
 }
 
 // ── Helpers ────────────────────────────────────────────────────
@@ -77,7 +103,7 @@ function createServer(session: Session) {
         isError: true,
         content: [{
           type: "text" as const,
-          text: "Forbidden: admin privileges required. Set an MCP_API_KEY in your .env.local and pass it via Authorization: Bearer <key> header.",
+          text: "Forbidden: admin privileges required. Sign in with Google or provide a valid OAuth token / MCP_API_KEY via the Authorization: Bearer header.",
         }],
       };
     }
@@ -110,6 +136,10 @@ async function handleMCPRequest(req: NextRequest): Promise<Response> {
   });
 
   const session = await resolveSession(req);
+  if (session === "unauthorized") {
+    return unauthorizedResponse();
+  }
+
   const server = createServer(session);
   await server.connect(transport);
 

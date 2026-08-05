@@ -10,7 +10,13 @@ import { useTranslation } from "~/i18n";
 
 const { Title, Text } = Typography;
 
-export default function LoginClient({ devMode }: { devMode: boolean }) {
+export default function LoginClient({
+  devMode,
+  callbackUrl,
+}: {
+  devMode: boolean;
+  callbackUrl: string;
+}) {
   const { data: session } = useSession();
   const router = useRouter();
   const { t } = useTranslation();
@@ -51,7 +57,7 @@ export default function LoginClient({ devMode }: { devMode: boolean }) {
                 icon={<UserOutlined />}
                 block
                 onClick={() =>
-                  signIn("credentials", { callbackUrl: "/", redirect: true })
+                  signIn("credentials", { callbackUrl, redirect: true })
                 }
               >
                 {t("Dev Login (Admin)")}
@@ -62,7 +68,7 @@ export default function LoginClient({ devMode }: { devMode: boolean }) {
                 size="large"
                 icon={<GoogleOutlined />}
                 block
-                onClick={() => signIn("google", { callbackUrl: "/" })}
+                onClick={() => signIn("google", { callbackUrl })}
               >
                 {t("Sign in with Google")}
               </Button>

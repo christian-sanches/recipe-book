@@ -1,6 +1,11 @@
 import { env } from "~/env";
 import LoginClient from "./login-client";
 
-export default function LoginPage() {
-  return <LoginClient devMode={env.DEV_MODE} />;
+export default async function LoginPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ callbackUrl?: string }>;
+}) {
+  const { callbackUrl } = await searchParams;
+  return <LoginClient devMode={env.DEV_MODE} callbackUrl={callbackUrl ?? "/"} />;
 }
