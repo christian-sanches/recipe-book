@@ -15,6 +15,7 @@ import { useRouter } from "next/navigation";
 import Layout from "~/components/Layout";
 import RecipeViewer from "~/components/RecipeViewer";
 import { api } from "~/trpc/react";
+import { serializeRecipeToCook } from "~/lib/cooklang";
 import { useTranslation } from "~/i18n";
 
 const { Title } = Typography;
@@ -55,7 +56,19 @@ export default function RecipeDetail({ params }: { params: Promise<{ slug: strin
   const handleExport = useCallback(() => {
     if (!recipe) return;
     try {
-      const blob = new Blob([recipe.cooklangContent], { type: "text/plain" });
+      const content = serializeRecipeToCook({
+        title: recipe.title,
+        description: recipe.description,
+        source: recipe.source,
+        image: recipe.image,
+        servings: recipe.servings,
+        prepTime: recipe.prepTime,
+        cookTime: recipe.cookTime,
+        totalTime: recipe.totalTime,
+        tags: recipe.tags.map((rt) => rt.tag.name),
+        cooklangContent: recipe.cooklangContent,
+      });
+      const blob = new Blob([content], { type: "text/plain" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
