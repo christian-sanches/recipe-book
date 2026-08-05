@@ -59,10 +59,29 @@ export function requireAdmin(session: ApiSession): void {
   }
 }
 
+// Ensure every JSON response declares UTF-8 so accented/special
+// characters are not mis-decoded by clients.
+const JSON_HEADERS = { "Content-Type": "application/json; charset=utf-8" };
+
 export function errorResponse(status: number, message: string): Response {
-  return Response.json({ error: message }, { status });
+  return Response.json({ error: message }, { status, headers: JSON_HEADERS });
 }
 
 export function successResponse(data: unknown, status = 200): Response {
-  return Response.json(data, { status });
+  return Response.json(data, { status, headers: JSON_HEADERS });
+}
+
+// Re-wrap an existing Response to append `; charset=utf-8` to its
+// Content-Type when it is missing (used by the tRPC/MCP handlers).
+export function ensureUtf8(res: Response): Response {
+  const headers = new Headers(res.headers);
+  const contentType = headers.get("content-type") ?? "application/json";
+  if (!/;\s*charset=/i.test(contentType)) {
+    headers.set("content-type", `${contentType}; charset=utf-8`);
+  }
+  return new Response(res.body, {
+    status: res.status,
+    statusText: res.statusText,
+    headers,
+  });
 }

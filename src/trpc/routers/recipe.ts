@@ -1,5 +1,6 @@
 import { router, publicProcedure, adminProcedure } from "~/trpc/init";
 import { generateSlug } from "~/lib/utils";
+import { serializeRecipeToCook } from "~/lib/cooklang";
 import {
   createRecipeSchema,
   updateRecipeSchema,
@@ -162,6 +163,7 @@ export const recipeRouter = router({
     .query(async ({ ctx, input }) => {
       const recipe = await ctx.db.recipe.findUnique({
         where: { slug: input.slug },
+        include: { tags: { include: { tag: true } } },
       });
 
       if (!recipe) {
@@ -172,6 +174,17 @@ export const recipeRouter = router({
         throw new Error("Recipe not found");
       }
 
-      return recipe.cooklangContent;
+      return serializeRecipeToCook({
+        title: recipe.title,
+        description: recipe.description,
+        source: recipe.source,
+        image: recipe.image,
+        servings: recipe.servings,
+        prepTime: recipe.prepTime,
+        cookTime: recipe.cookTime,
+        totalTime: recipe.totalTime,
+        tags: recipe.tags.map((rt) => rt.tag.name),
+        cooklangContent: recipe.cooklangContent,
+      });
     }),
 });

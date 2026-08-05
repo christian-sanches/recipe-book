@@ -9,6 +9,7 @@ import { auth } from "~/server/auth";
 import { db } from "~/server/db";
 import { tools, type Session } from "~/mcp/tools";
 import { env } from "~/env";
+import { ensureUtf8 } from "../helpers";
 
 // ── Auth helpers ────────────────────────────────────────────────
 function resolveSession(req: NextRequest): Promise<Session> {
@@ -112,7 +113,7 @@ async function handleMCPRequest(req: NextRequest): Promise<Response> {
   const server = createServer(session);
   await server.connect(transport);
 
-  return transport.handleRequest(req);
+  return ensureUtf8(await transport.handleRequest(req));
 }
 
 // ── Route Exports ───────────────────────────────────────────────
