@@ -2,7 +2,7 @@
   "openapi": "3.0.0",
   "info": {
     "title": "Recipe Book API",
-    "version": "1.0.0",
+    "version": "3.1.0",
     "description": "API para gerenciar receitas culinárias escritas em formato Cooklang. Permite criar, listar, visualizar, editar e deletar receitas, além de gerenciar tags."
   },
   "servers": [
