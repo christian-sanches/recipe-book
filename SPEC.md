@@ -4,7 +4,7 @@
 
 A self-hosted web application for managing cooking recipes using the [Cooklang](https://cooklang.org) markup language. Recipes are written in Cooklang syntax, parsed with the official WASM build of `cooklang-rs`, and stored in a PostgreSQL database. The app provides a clean CRUD interface, search, tags, and Google OAuth authentication for multi-user access.
 
-**Live at:** `recipes.fleflis.dev`
+**Live at:** `recipes.endless-point.org`
 
 ---
 
@@ -327,7 +327,7 @@ services:
     environment:
       DATABASE_URL: postgresql://recipe_book:${DB_PASSWORD}@postgres:5432/recipe_book
       NEXTAUTH_SECRET: ${NEXTAUTH_SECRET}
-      NEXTAUTH_URL: https://recipes.fleflis.dev
+      NEXTAUTH_URL: https://recipes.endless-point.org
       AUTH_GOOGLE_ID: ${AUTH_GOOGLE_ID}
       AUTH_GOOGLE_SECRET: ${AUTH_GOOGLE_SECRET}
       ADMIN_EMAILS: ${ADMIN_EMAILS}
@@ -352,7 +352,7 @@ volumes:
 
 ### DNS
 
-A record for `recipes.fleflis.dev` points to this VM's IP address. Caddy handles automatic SSL certificate provisioning via Let's Encrypt.
+A record for `recipes.endless-point.org` points to this VM's IP address. Caddy handles automatic SSL certificate provisioning via Let's Encrypt.
 
 ---
 

@@ -18,27 +18,51 @@ body {
   padding: 4px 0;
 }
 
-/* Ingredient & cookware tokens inside step text */
-.cooklang-steps .ingredient,
-.cooklang-steps .cookware {
+/* Ingredient tokens inside step text */
+.cooklang-steps .ingredient {
+  color: #52c41a;
   font-weight: 500;
 }
 
-/* Timers inside steps */
+/* Cookware & timer tokens as colorful pills */
+.cooklang-steps .cookware,
 .cooklang-steps .timer {
+  display: inline-block;
+  padding: 0 6px;
+  border-radius: 4px;
+  font-size: 0.85em;
+}
+
+.cooklang-steps .cookware {
+  background: #e6f4ff;
   color: #1677ff;
+}
+
+.cooklang-steps .timer {
+  background: #fff7e6;
+  color: #d46b08;
 }
 
 /* ── Dark mode overrides ──────────────────────────────────── */
 html.dark .cooklang-steps,
 html.dark .cooklang-steps p,
 html.dark .cooklang-steps .step,
-html.dark .cooklang-steps span {
+html.dark .cooklang-steps span:not(.ingredient):not(.cookware):not(.timer) {
   color: rgba(255, 255, 255, 0.85);
 }
 
+html.dark .cooklang-steps .ingredient {
+  color: #95de64;
+}
+
+html.dark .cooklang-steps .cookware {
+  background: rgba(22, 119, 255, 0.15);
+  color: #69b1ff;
+}
+
 html.dark .cooklang-steps .timer {
-  color: #4096ff;
+  background: rgba(255, 170, 0, 0.15);
+  color: #ffc53d;
 }
 
 /* Note styling - cooklang uses > for notes */
