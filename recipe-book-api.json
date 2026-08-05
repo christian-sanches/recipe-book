@@ -1,5 +1,5 @@
 {
-  "openapi": "3.0.0",
+  "openapi": "3.1.0",
   "info": {
     "title": "Recipe Book API",
     "version": "3.1.0",
@@ -15,7 +15,7 @@
     "/api/recipes": {
       "get": {
         "summary": "Listar receitas",
-        "description": "Lista receitas com filtros opcionais. Sem API Key, só retorna receitas públicas.",
+        "description": "Lista receitas com filtros opcionais. Sem API Key, só retorna receitas públicas. Retorna apenas um resumo de cada receita (sem o conteúdo Cooklang) — use GET /api/recipes/{slug} para o conteúdo completo.",
         "operationId": "listRecipes",
         "parameters": [
           { "name": "query", "in": "query", "schema": { "type": "string" }, "description": "Busca por nome ou ingrediente" },
@@ -25,13 +25,13 @@
         ],
         "responses": {
           "200": {
-            "description": "Lista de receitas",
+            "description": "Lista de receitas (resumo, sem conteúdo Cooklang)",
             "content": {
               "application/json": {
                 "schema": {
                   "type": "object",
                   "properties": {
-                    "items": { "type": "array", "items": { "$ref": "#/components/schemas/Recipe" } },
+                    "items": { "type": "array", "items": { "$ref": "#/components/schemas/RecipeSummary" } },
                     "total": { "type": "integer" },
                     "limit": { "type": "integer" },
                     "offset": { "type": "integer" }
@@ -57,12 +57,12 @@
                 "properties": {
                   "title": { "type": "string", "description": "Título da receita" },
                   "cooklangContent": { "type": "string", "description": "Conteúdo em formato Cooklang" },
-                  "description": { "type": "string", "description": "Descrição curta" },
-                  "servings": { "type": "integer", "description": "Porções" },
-                  "prepTime": { "type": "integer", "description": "Tempo de preparo (min)" },
-                  "cookTime": { "type": "integer", "description": "Tempo de cozimento (min)" },
-                  "totalTime": { "type": "integer", "description": "Tempo total (min)" },
-                  "source": { "type": "string", "description": "Fonte da receita" },
+                  "description": { "type": ["string", "null"], "description": "Descrição curta" },
+                  "servings": { "type": ["integer", "null"], "description": "Porções" },
+                  "prepTime": { "type": ["integer", "null"], "description": "Tempo de preparo (min)" },
+                  "cookTime": { "type": ["integer", "null"], "description": "Tempo de cozimento (min)" },
+                  "totalTime": { "type": ["integer", "null"], "description": "Tempo total (min)" },
+                  "source": { "type": ["string", "null"], "description": "Fonte da receita" },
                   "visibility": { "type": "string", "enum": ["PUBLIC", "HIDDEN"], "default": "PUBLIC" },
                   "tags": { "type": "array", "items": { "type": "string" }, "description": "IDs, slugs ou nomes de tags (novas são criadas automaticamente)" }
                 }
@@ -80,7 +80,7 @@
     "/api/recipes/{slug}": {
       "get": {
         "summary": "Buscar receita por slug",
-        "description": "Retorna os detalhes completos de uma receita pelo slug.",
+        "description": "Retorna os detalhes completos de uma receita pelo slug, incluindo o conteúdo Cooklang.",
         "operationId": "getRecipe",
         "parameters": [
           { "name": "slug", "in": "path", "required": true, "schema": { "type": "string" }, "description": "Slug da receita (ex: 'strogonoff-de-frango')" }
@@ -106,12 +106,12 @@
                 "properties": {
                   "title": { "type": "string" },
                   "cooklangContent": { "type": "string" },
-                  "description": { "type": "string", "nullable": true },
-                  "servings": { "type": "integer", "nullable": true },
-                  "prepTime": { "type": "integer", "nullable": true },
-                  "cookTime": { "type": "integer", "nullable": true },
-                  "totalTime": { "type": "integer", "nullable": true },
-                  "source": { "type": "string", "nullable": true },
+                  "description": { "type": ["string", "null"] },
+                  "servings": { "type": ["integer", "null"] },
+                  "prepTime": { "type": ["integer", "null"] },
+                  "cookTime": { "type": ["integer", "null"] },
+                  "totalTime": { "type": ["integer", "null"] },
+                  "source": { "type": ["string", "null"] },
                   "visibility": { "type": "string", "enum": ["PUBLIC", "HIDDEN"] },
                   "tags": { "type": "array", "items": { "type": "string" } }
                 }
@@ -203,24 +203,24 @@
         "type": "apiKey",
         "in": "header",
         "name": "X-API-Key",
-        "description": "Chave de API para operações administrativas. Passe no header X-API-Key ou Authorization: Bearer <key>"
+        "description": "Chave de API para operações administrativas. Passe no header X-API-Key ou Authorization: Bearer ***"
       }
     },
     "schemas": {
-      "Recipe": {
+      "RecipeSummary": {
         "type": "object",
+        "description": "Resumo de receita para listagens — sem o conteúdo Cooklang completo. Use GET /api/recipes/{slug} para obter o conteúdo.",
         "properties": {
           "id": { "type": "string" },
           "title": { "type": "string" },
           "slug": { "type": "string" },
-          "cooklangContent": { "type": "string" },
-          "description": { "type": "string", "nullable": true },
-          "servings": { "type": "integer", "nullable": true },
-          "prepTime": { "type": "integer", "nullable": true },
-          "cookTime": { "type": "integer", "nullable": true },
-          "totalTime": { "type": "integer", "nullable": true },
-          "source": { "type": "string", "nullable": true },
-          "image": { "type": "string", "nullable": true },
+          "description": { "type": ["string", "null"] },
+          "servings": { "type": ["integer", "null"] },
+          "prepTime": { "type": ["integer", "null"] },
+          "cookTime": { "type": ["integer", "null"] },
+          "totalTime": { "type": ["integer", "null"] },
+          "source": { "type": ["string", "null"] },
+          "image": { "type": ["string", "null"] },
           "visibility": { "type": "string", "enum": ["PUBLIC", "HIDDEN"] },
           "tags": {
             "type": "array",
@@ -239,12 +239,52 @@
             }
           },
           "author": {
-            "type": "object",
-            "nullable": true,
+            "type": ["object", "null"],
             "properties": {
               "id": { "type": "string" },
-              "name": { "type": "string", "nullable": true },
-              "image": { "type": "string", "nullable": true }
+              "name": { "type": ["string", "null"] },
+              "image": { "type": ["string", "null"] }
+            }
+          }
+        }
+      },
+      "Recipe": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "title": { "type": "string" },
+          "slug": { "type": "string" },
+          "cooklangContent": { "type": "string" },
+          "description": { "type": ["string", "null"] },
+          "servings": { "type": ["integer", "null"] },
+          "prepTime": { "type": ["integer", "null"] },
+          "cookTime": { "type": ["integer", "null"] },
+          "totalTime": { "type": ["integer", "null"] },
+          "source": { "type": ["string", "null"] },
+          "image": { "type": ["string", "null"] },
+          "visibility": { "type": "string", "enum": ["PUBLIC", "HIDDEN"] },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "tag": {
+                  "type": "object",
+                  "properties": {
+                    "id": { "type": "string" },
+                    "name": { "type": "string" },
+                    "slug": { "type": "string" }
+                  }
+                }
+              }
+            }
+          },
+          "author": {
+            "type": ["object", "null"],
+            "properties": {
+              "id": { "type": "string" },
+              "name": { "type": ["string", "null"] },
+              "image": { "type": ["string", "null"] }
             }
           }
         }

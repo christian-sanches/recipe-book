@@ -41,8 +41,23 @@ export async function GET(req: Request) {
   const [items, total] = await Promise.all([
     db.recipe.findMany({
       where,
-      include: {
-        tags: { include: { tag: true } },
+      // List endpoint returns metadata only — the full Cooklang content
+      // is fetched via GET /api/recipes/{slug} to keep lists light.
+      select: {
+        id: true,
+        title: true,
+        slug: true,
+        description: true,
+        servings: true,
+        prepTime: true,
+        cookTime: true,
+        totalTime: true,
+        source: true,
+        image: true,
+        visibility: true,
+        createdAt: true,
+        updatedAt: true,
+        tags: { select: { tag: { select: { id: true, name: true, slug: true } } } },
         author: { select: { id: true, name: true, image: true } },
       },
       orderBy: { createdAt: "desc" },
