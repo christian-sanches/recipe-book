@@ -148,13 +148,18 @@ model OAuthAccessToken {
 }
 
 model OAuthRefreshToken {
-  token     String    @id
-  clientId  String
-  scopes    String[]
-  userId    String
-  expiresAt DateTime
-  revokedAt DateTime?
-  createdAt DateTime  @default(now())
+  token           String    @id
+  clientId        String
+  scopes          String[]
+  userId          String
+  expiresAt       DateTime
+  revokedAt       DateTime?
+  // RFC 9700 grace period: when rotated, points to the replacement token.
+  // Lets clients that fire concurrent refreshes (ChatGPT connector) reuse
+  // a just-rotated token idempotently instead of dying with invalid_grant.
+  replacedByToken String?   @unique
+  accessToken     String?
+  createdAt       DateTime  @default(now())
 
   @@index([clientId])
 }

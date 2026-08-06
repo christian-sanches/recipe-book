@@ -75,22 +75,69 @@ export async function POST(req: NextRequest) {
     }
 
     const record = await db.oAuthRefreshToken.findUnique({ where: { token: refreshToken } });
-    if (
-      !record ||
-      record.clientId !== clientId ||
-      record.revokedAt ||
-      record.expiresAt.getTime() < Date.now()
-    ) {
+    if (!record || record.clientId !== clientId || record.expiresAt.getTime() < Date.now()) {
       return oauthError("invalid_grant", "Invalid or expired refresh token");
     }
 
-    // Rotate: revoke the old refresh token, issue a fresh pair
+    // RFC 9700 grace period: if this token was already rotated but very
+    // recently (concurrent refresh race — ChatGPT's connector fires
+    // duplicate refreshes), follow the chain to the current token and
+    // return it idempotently instead of killing the client with
+    // invalid_grant. Reuse outside the grace window stays rejected.
+    const GRACE_MS = 60 * 1000;
+    if (record.revokedAt) {
+      if (record.revokedAt.getTime() + GRACE_MS < Date.now() || !record.replacedByToken) {
+        return oauthError("invalid_grant", "Refresh token has been revoked (reuse detected)");
+      }
+
+      let current = record;
+      const seen = new Set<string>([current.token]);
+      while (current.revokedAt) {
+        if (current.revokedAt.getTime() + GRACE_MS < Date.now() || !current.replacedByToken) {
+          return oauthError("invalid_grant", "Refresh token chain is stale");
+        }
+        const next = await db.oAuthRefreshToken.findUnique({
+          where: { token: current.replacedByToken },
+        });
+        if (!next || seen.has(next.token)) {
+          return oauthError("invalid_grant", "Invalid refresh token chain");
+        }
+        seen.add(next.token);
+        current = next;
+      }
+
+      if (current.expiresAt.getTime() < Date.now()) {
+        return oauthError("invalid_grant", "Invalid or expired refresh token");
+      }
+      if (!current.accessToken) {
+        return oauthError("invalid_grant", "Refresh token chain is incomplete");
+      }
+
+      // Idempotent: return the current valid pair without rotating again.
+      const activeAccess = await db.oAuthAccessToken.findUnique({
+        where: { token: current.accessToken },
+      });
+      return jsonResponse({
+        access_token: current.accessToken,
+        token_type: "bearer",
+        expires_in: activeAccess
+          ? Math.max(1, Math.floor((activeAccess.expiresAt.getTime() - Date.now()) / 1000))
+          : 3600,
+        refresh_token: current.token,
+        scope: current.scopes.join(" "),
+      });
+    }
+
+    // Normal rotation: revoke the old refresh token, issue a fresh pair
+    const tokens = (await issueTokens(clientId, record.userId, record.scopes)) as {
+      access_token: string;
+      refresh_token: string;
+    };
     await db.oAuthRefreshToken.update({
       where: { token: refreshToken },
-      data: { revokedAt: new Date() },
+      data: { revokedAt: new Date(), replacedByToken: tokens.refresh_token },
     });
 
-    const tokens = await issueTokens(clientId, record.userId, record.scopes);
     return jsonResponse(tokens);
   }
 

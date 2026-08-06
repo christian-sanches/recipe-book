@@ -2,7 +2,10 @@ import { createHash, randomBytes } from "node:crypto";
 import { db } from "~/server/db";
 
 export const MCP_SCOPE = "mcp:tools";
-const ACCESS_TOKEN_TTL_MS = 60 * 60 * 1000; // 1 hour
+// 24h: reduces refresh churn and 401-after-idle windows. ChatGPT's connector
+// is known to break connections after idle; a longer-lived access token
+// means a still-valid token on reconnect (no refresh needed).
+const ACCESS_TOKEN_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
 const REFRESH_TOKEN_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
 const AUTH_CODE_TTL_MS = 10 * 60 * 1000; // 10 minutes
 
@@ -70,6 +73,9 @@ export async function issueTokens(
       scopes,
       userId,
       expiresAt: new Date(now + REFRESH_TOKEN_TTL_MS),
+      // link the access token issued in the same grant so an idempotent
+      // grace-period refresh can return the matching pair (RFC 9700)
+      accessToken,
     },
   });
 
